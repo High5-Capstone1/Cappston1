@@ -1,0 +1,6 @@
+     body { font-family: Arial; width: 300px; margin: auto; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        td, th { padding: 5px; text-align: left; }
+        .total { font-weight: bold; }
+        .center { text-align: center; }

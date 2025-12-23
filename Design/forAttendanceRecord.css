@@ -1,0 +1,22 @@
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background-color: #f4f4f4;
+}
+.logout {
+    margin-top: 10px;
+}
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+th { background-color: #f4f4f4; }
+.filter-box { margin-top: 20px; }
+.filter-box input, .filter-box select { margin-right: 10px; padding: 5px; }
+.logout { margin-top: 10px; }

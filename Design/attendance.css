@@ -1,0 +1,82 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #e6f0ff;
+    color: #003366;
+    margin: 0;
+    padding: 0;
+}
+
+.attendance-container {
+    width: 80%;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #cce0ff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-box {
+    background-color: #b3d1ff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+}
+
+input[type="time"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 5px;
+    border: 1px solid #003366;
+}
+
+button {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background-color: #d62000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #f36350;
+}
+
+.history-box table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-box th, .history-box td {
+    border: 1px solid #003366;
+    padding: 8px;
+    text-align: center;
+}
+
+.history-box th {
+    background-color: #99c2ff;
+}
+
+.message {
+    text-align: center;
+    font-weight: bold;
+    color: green;
+}
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+th { background-color: #f4f4f4; }
+.filter-box { margin-top: 20px; }
+.filter-box input, .filter-box select { margin-right: 10px; padding: 5px; }
+.logout { margin-top: 10px; }

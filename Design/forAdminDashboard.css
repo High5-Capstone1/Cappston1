@@ -1,0 +1,107 @@
+  body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f4f6f8;
+    }
+
+    .sidebar {
+        width: 230px;
+        height: 100vh;
+        background: #1f2937;
+        color: #fff;
+        position: fixed;
+        padding-top: 20px;
+    }
+
+    .sidebar h2 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 20px;
+    }
+
+    .sidebar a {
+        display: block;
+        padding: 12px 20px;
+        color: #cbd5e1;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .sidebar a:hover {
+        background: #374151;
+        color: #fff;
+    }
+
+    .content {
+        margin-left: 230px;
+        padding: 25px;
+    }
+
+    .box {
+        background: #fff;
+        padding: 20px;
+        border-radius: 6px;
+        margin-bottom: 25px;
+    }
+
+    input, select, button {
+        padding: 8px;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    button {
+        background: #2563eb;
+        border: none;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #1e40af;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table, th, td {
+        border: 1px solid #ddd;
+    }
+
+    th, td {
+        padding: 8px;
+        text-align: left;
+    }
+
+    th {
+        background: #f1f5f9;
+    }
+
+    .logout {
+        background: #dc2626;
+        margin-top: 20px;
+    }
+
+    .logout:hover {
+        background: #991b1b;
+    }
+    .password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    width: 96%;
+    padding-right: 40px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 18px;
+    user-select: none;
+}

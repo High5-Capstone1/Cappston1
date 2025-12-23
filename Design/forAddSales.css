@@ -1,0 +1,4 @@
+  body { font-family: Arial; background: #f4f6f8; padding: 20px; }
+        form { background: #fff; padding: 20px; width: 400px; }
+        select, input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 10px; background: #28a745; color: white; border: none; }

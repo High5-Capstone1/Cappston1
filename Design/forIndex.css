@@ -1,0 +1,60 @@
+ body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #ffecd2, #fcb69f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 30px;
+            color: #555;
+        }
+
+        .role-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .role-buttons a {
+            text-decoration: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            color: white;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .staff {
+            background-color: #4CAF50;
+        }
+
+        .cashier {
+            background-color: #2196F3;
+        }
+
+        .admin {
+            background-color: #f44336;
+        }
+
+        .role-buttons a:hover {
+            opacity: 0.85;
+            transform: scale(1.02);
+        }
