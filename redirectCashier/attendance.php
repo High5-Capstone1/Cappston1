@@ -89,13 +89,12 @@ $history = $stmt->get_result();
 
 <?php if (!$todayAttendance): ?>
 
-<div class="logout">
-    <form method="POST" action="../logout.php">
-        <button type="submit">Logout</button>
-    </form>
-</div>
+
+   
+
 
 <form method="POST">
+     <a href="cashierDashboard.php">Back</a>
     <label>Time In:</label>
     <button type="submit" name="time_in_btn">Time In</button>
 </form>

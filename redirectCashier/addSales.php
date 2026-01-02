@@ -122,12 +122,12 @@ if (isset($_POST['save_sale'])) {
     <input type="number" name="quantity" min="1" value="1" required>
 
     
-    <label>Add Toppings (+₱5 each)</label><br>
+    <h3>Add Toppings (+₱5 each)</h3>
     <?php while ($t = $toppings->fetch_assoc()): ?>
         <label>
             <input type="checkbox" name="toppings[]" value="<?= $t['topping_id'] ?>">
-            <?= $t['topping_name'] ?> (+₱<?= $t['price'] ?>)
-        </label><br>
+            <?= $t['topping_name'] ?> (+₱<?= $t['price'] ?>) <br>
+        </label>
     <?php endwhile; ?>
 
     <button type="submit" name="save_sale">Submit</button>
