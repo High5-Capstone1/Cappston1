@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("iisss", $user_id, $store_id, $role, $today, $time_in);
         $stmt->execute();
 
-        $message = "Time In recorded at $time_in";
+        $message = "Time In successfully recorded";
 
    
     } elseif (isset($_POST['time_out_btn']) && $todayAttendance && empty($todayAttendance['time_out'])) {
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("si", $time_out, $todayAttendance['attendance_id']);
             $stmt->execute();
 
-            $message = " Time Out recorded at $time_out";
+            $message = " Time Out successfully recorded";
         }
 
     } else {
