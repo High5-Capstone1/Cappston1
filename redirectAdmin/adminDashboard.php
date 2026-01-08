@@ -16,35 +16,86 @@ $result = $conn->query($sql);
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="../Design/forAdminDashboard.css">
-<title>Admin Dashboard</title>
+<title>Admin Dashboard - Mr. Softy</title>
 </head>
 
 <body>
 
-<div class="sidebar">
-    <h2>ADMIN PANEL</h2>
-    <a href="adminDashboard.php">🏠 Dashboard</a>
-    <a href="inventory.php">📦 Inventory (All Stores)</a>
-    <a href="sales.php">💰 Sales Overview</a>
-    <a href="attendanceRecords.php">🕒 Attendance Logs</a>
-    <a href="expenses.php">🧾 Expenses Summary</a>
-    <a href="reports.php">📊 Daily Reports</a>
-    <a href="variance.php">⚠ Variance Alerts</a>
-    <a href="users.php">👥 Staff Accounts</a>
+<nav class="navbar">
+    <div class="navbar-brand">
+        <span class="brand-icon">🍦</span>
+        <span class="brand-name">Mr. Softy</span>
+        <span class="brand-subtitle">Admin Panel</span>
+    </div>
+    <div class="navbar-user">
+        <form action="../logout.php" method="POST">
+            <button class="logout-btn">Logout</button>
+        </form>
+    </div>
+</nav>
 
-    <form action="../logout.php" method="POST">
-        <button class="logout">Logout</button>
-    </form>
+<div class="dashboard-container">
+    
+    <div class="dashboard-grid">
+        
+        <a href="adminDashboard.php" class="dashboard-card active">
+            <div class="card-icon">🏠</div>
+            <div class="card-title">Dashboard</div>
+            <div class="card-desc">Overview</div>
+        </a>
+
+        <a href="inventory.php" class="dashboard-card">
+            <div class="card-icon">📦</div>
+            <div class="card-title">Inventory</div>
+            <div class="card-desc">All Stores</div>
+        </a>
+
+        <a href="sales.php" class="dashboard-card">
+            <div class="card-icon">💰</div>
+            <div class="card-title">Sales</div>
+            <div class="card-desc">Overview</div>
+        </a>
+
+        <a href="attendanceRecords.php" class="dashboard-card">
+            <div class="card-icon">🕒</div>
+            <div class="card-title">Attendance</div>
+            <div class="card-desc">Records</div>
+        </a>
+
+        <a href="expenses.php" class="dashboard-card">
+            <div class="card-icon">🧾</div>
+            <div class="card-title">Expenses</div>
+            <div class="card-desc">Summary</div>
+        </a>
+
+        <a href="reports.php" class="dashboard-card">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Reports</div>
+            <div class="card-desc">Daily</div>
+        </a>
+
+        <a href="variance.php" class="dashboard-card">
+            <div class="card-icon">⚠️</div>
+            <div class="card-title">Variance</div>
+            <div class="card-desc">Alerts</div>
+        </a>
+
+        <a href="users.php" class="dashboard-card">
+            <div class="card-icon">👥</div>
+            <div class="card-title">Users</div>
+            <div class="card-desc">Staff Accounts</div>
+        </a>
+
+    </div>
+
+    <div class="welcome-section">
+        <h2>Admin Dashboard</h2>
+        <p>You have full access to all stores and reports. Select a section above to get started.</p>
+    </div>
+
 </div>
 
-
-<div class="content">
-
-    <div class="box">
-        <h2>Welcome, Admin</h2>
-        <p>You have full access to all stores and reports.</p>
-    </div>
-    
 </body>
 </html>

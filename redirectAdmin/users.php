@@ -14,26 +14,9 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 <head>
 <meta charset="UTF-8">
 <title>Add User Account</title>
-<link rel="stylesheet" href="../Design/forAdminDashboard.css">
+<link rel="stylesheet" href="../Design/foradminUsers.css">
 </head>
 <body>
-
-<div class="sidebar">
-    <h2>ADMIN PANEL</h2>
-    <a href="adminDashboard.php">🏠 Dashboard</a>
-    <a href="inventory.php">📦 Inventory (All Stores)</a>
-    <a href="sales.php">💰 Sales Overview</a>
-    <a href="attendance.php">🕒 Attendance Logs</a>
-    <a href="expenses.php">🧾 Expenses Summary</a>
-    <a href="reports.php">📊 Daily Reports</a>
-    <a href="variance.php">⚠ Variance Alerts</a>
-    <a href="users.php">👥 Staff Accounts</a>
-
-    <form action="../logout.php" method="POST">
-        <button class="logout">Logout</button>
-    </form>
-</div>
-
 <div class="content">
     <div class="box">
         <h2>Add Staff / Cashier Account</h2>
@@ -49,11 +32,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 <p id="passwordError" style="color:red; display:none;">
     Passwords do not match
 </p>
-
-
-
-            <select name="role" required>
-                <option value="">-- Select Role --</option>
+        <select name="role" required>
+                <option value=""> Select Role </option>
                 <option value="cashier">Cashier</option>
                 <option value="staff">Staff</option>
             </select>

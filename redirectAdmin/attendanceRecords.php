@@ -9,6 +9,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
 date_default_timezone_set('Asia/Manila');
 
+$admin_name = $_SESSION['username'] ?? 'Admin';
 
 $filter_start = $_GET['start_date'] ?? '';
 $filter_end   = $_GET['end_date'] ?? '';
@@ -35,11 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $del_stmt->bind_param("i", $delete_id);
     $del_stmt->execute();
     
-    
     $message = "Attendance record deleted successfully.";
+    $message_type = "success";
 }
-
-
 
 if (!empty($filter_start)) {
     $sql .= " AND a.date >= ?";
@@ -52,13 +51,11 @@ if (!empty($filter_end)) {
     $types .= "s";
 }
 
-
 if (!empty($filter_role)) {
     $sql .= " AND u.role = ?";
     $params[] = $filter_role;
     $types .= "s";
 }
-
 
 if (!empty($filter_store)) {
     $sql .= " AND a.store_id = ?";
@@ -76,79 +73,289 @@ if (!empty($params)) {
 
 $stmt->execute();
 $history = $stmt->get_result();
+
+
+$total_records = $history->num_rows;
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Admin Attendance Records</title>
-<link rel="stylesheet" href="../../Design/attendance.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Attendance Records</title>
+    
 
+    <link rel="stylesheet" href="../Design/forAttendanceRecord.css">
+    
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
+ 
+    <header class="header">
+        <div class="header-container">
+            <div class="header-content">
+                <div class="header-left">
+                    <a href="adminDashboard.php" class="back-btn">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-clipboard-list"></i>
+                            Attendance Records
+                        </h1>
+                        <p>Manage all employee attendance</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p>Admin Panel</p>
+                    <p class="admin-name"><?= htmlspecialchars($admin_name) ?></p>
+                </div>
+            </div>
+        </div>
+    </header>
 
-<div class="attendance-container">
-    <a href="adminDashboard.php">Back</a>
-<h2>Admin - Attendance Records</h2>
+    <div class="container">
+        
+
+        <?php if(isset($message)): ?>
+        <div class="message <?= $message_type ?>">
+            <i class="fas fa-check-circle"></i>
+            <p><?= $message ?></p>
+        </div>
+        <?php endif; ?>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <p class="stat-label">Total Records</p>
+                    <p class="stat-value"><?= $total_records ?></p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-info">
+                    <p class="stat-label">Today's Date</p>
+                    <p class="stat-value"><?= date('M d, Y') ?></p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <div class="stat-info">
+                    <p class="stat-label">Filters Active</p>
+                    <p class="stat-value">
+                        <?= (!empty($filter_start) || !empty($filter_end) || !empty($filter_role) || !empty($filter_store)) ? 'Yes' : 'No' ?>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <p class="stat-label">Current Time</p>
+                    <p class="stat-value" id="currentTime"></p>
+                </div>
+            </div>
+        </div>
 
 
-<div class="filter-box">
-    <form method="GET" action="">
-        <label>Start Date: <input type="date" name="start_date" value="<?= htmlspecialchars($filter_start) ?>"></label>
-        <label>End Date: <input type="date" name="end_date" value="<?= htmlspecialchars($filter_end) ?>"></label>
-        <label>Role: 
-            <select name="role">
-                <option value="">All</option>
-                <option value="cashier" <?= $filter_role=='cashier'?'selected':'' ?>>Cashier</option>
-                <option value="staff" <?= $filter_role=='staff'?'selected':'' ?>>Staff</option>
-            </select>
-        </label>
-        <label>Store ID: <input type="number" name="store_id" value="<?= htmlspecialchars($filter_store) ?>"></label>
-        <button type="submit">Filter</button>
-        <a href="../../redirectAdmin/attendanceRecords.php"><button type="button">Reset</button></a>
-    </form>
-</div>
-
-
-<div class="history-box">
-<table>
-<tr>
-    <th>Date</th>
-    <th>Full Name</th>
-    <th>Role</th>
-    <th>Store ID</th>
-     <th>Location</th>
-    <th>Time In</th>
-    <th>Time Out</th>
-    <th>Action</th>
-</tr>
-
-<?php if($history->num_rows > 0): ?>
-    <?php while($row = $history->fetch_assoc()): ?>
-    <tr>
-        <td><?= $row['date'] ?></td>
-        <td><?= htmlspecialchars($row['name']) ?></td>
-        <td><?= ucfirst($row['role']) ?></td>
-        <td><?= $row['store_id'] ?></td>
-         <td><?= $row['location'] ?></td>
-        <td><?= $row['time_in'] ?></td>
-        <td><?= $row['time_out'] ?? '-' ?></td>
-        <td>
-            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this record?');">
-                <input type="hidden" name="delete_id" value="<?= $row['attendance_id'] ?>">
-                <button type="submit">Delete</button>
+        <div class="filter-section">
+            <div class="filter-header">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i>
+                    <h2>Filter Records</h2>
+                </div>
+            </div>
+            
+            <form method="GET" action="" class="filter-form">
+                <div class="filter-grid">
+                    <div class="filter-field">
+                        <label>
+                            <i class="fas fa-calendar-alt"></i>
+                            Start Date
+                        </label>
+                        <input type="date" name="start_date" value="<?= htmlspecialchars($filter_start) ?>">
+                    </div>
+                    
+                    <div class="filter-field">
+                        <label>
+                            <i class="fas fa-calendar-alt"></i>
+                            End Date
+                        </label>
+                        <input type="date" name="end_date" value="<?= htmlspecialchars($filter_end) ?>">
+                    </div>
+                    
+                    <div class="filter-field">
+                        <label>
+                            <i class="fas fa-user-tag"></i>
+                            Role
+                        </label>
+                        <select name="role">
+                            <option value="">All Roles</option>
+                            <option value="cashier" <?= $filter_role=='cashier'?'selected':'' ?>>Cashier</option>
+                            <option value="staff" <?= $filter_role=='staff'?'selected':'' ?>>Staff</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-field">
+                        <label>
+                            <i class="fas fa-store"></i>
+                            Store ID
+                        </label>
+                        <input type="number" name="store_id" placeholder="Enter Store ID" value="<?= htmlspecialchars($filter_store) ?>">
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-filter">
+                        <i class="fas fa-search"></i>
+                        Apply Filters
+                    </button>
+                    <a href="../../redirectAdmin/attendanceRecords.php" class="btn btn-reset">
+                        <i class="fas fa-redo"></i>
+                        Reset Filters
+                    </a>
+                </div>
             </form>
-        </td>
-    </tr>
-    <?php endwhile; ?>
-<?php else: ?>
-<tr><td colspan="6">No records found</td></tr>
-<?php endif; ?>
+        </div>
 
-</table>
-</div>
-</div>
+
+        <div class="records-section">
+            <div class="records-header">
+                <div class="records-title">
+                    <i class="fas fa-table"></i>
+                    <h2>Attendance Records</h2>
+                </div>
+                <div class="records-count">
+                    <span class="count-badge"><?= $total_records ?> Records</span>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-calendar"></i> Date</th>
+                            <th><i class="fas fa-user"></i> Full Name</th>
+                            <th><i class="fas fa-id-badge"></i> Role</th>
+                            <th><i class="fas fa-store"></i> Store ID</th>
+                            <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                            <th><i class="fas fa-sign-in-alt"></i> Time In</th>
+                            <th><i class="fas fa-sign-out-alt"></i> Time Out</th>
+                            <th><i class="fas fa-cog"></i> Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if($history->num_rows > 0): ?>
+                            <?php while($row = $history->fetch_assoc()): ?>
+                            <tr>
+                                <td>
+                                    <span class="date-badge">
+                                        <?= date('M d, Y', strtotime($row['date'])) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">
+                                            <?= strtoupper(substr($row['name'], 0, 1)) ?>
+                                        </div>
+                                        <span><?= htmlspecialchars($row['name']) ?></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="role-badge <?= strtolower($row['role']) ?>">
+                                        <?= ucfirst($row['role']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="store-badge">
+                                        Store #<?= $row['store_id'] ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="location-text">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <?= htmlspecialchars($row['location']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="time-badge time-in">
+                                        <i class="fas fa-clock"></i>
+                                        <?= date('h:i A', strtotime($row['time_in'])) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if($row['time_out']): ?>
+                                        <span class="time-badge time-out">
+                                            <i class="fas fa-clock"></i>
+                                            <?= date('h:i A', strtotime($row['time_out'])) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="time-badge in-progress">
+                                            <i class="fas fa-hourglass-half"></i>
+                                            In Progress
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <form method="POST" class="delete-form" onsubmit="return confirm('Are you sure you want to delete this attendance record?');">
+                                        <input type="hidden" name="delete_id" value="<?= $row['attendance_id'] ?>">
+                                        <button type="submit" class="btn-delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="8">
+                                    <div class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No attendance records found</p>
+                                        <span>Try adjusting your filters</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        function updateTime() {
+            const now = new Date();
+            const options = { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            };
+            const timeElement = document.getElementById('currentTime');
+            if (timeElement) {
+                timeElement.textContent = now.toLocaleTimeString('en-US', options);
+            }
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+
 </body>
 </html>
