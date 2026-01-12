@@ -53,10 +53,32 @@ while ($row = $sales->fetch_assoc()) {
 <head>
     <title>Sales History</title>
     <link rel="stylesheet" href="../Design/forCashierSaleHistory.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-<a href="cashierDashboard.php">Back</a>
-<h1>📊 Sales History</h1>
+<header class="header">
+        <div class="header-container">
+            <div class="header-content">
+                <div class="header-left">
+                    <a href="cashierDashboard.php" class="back">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="header-title">
+                        <h1>
+                            <i class="fa-solid fa-chart-line"></i>
+                            <h1>Sales History</h1>
+                        </h1>
+                        <p>Track your work hours</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p>Store #<?= htmlspecialchars($cashier_id) ?></p>
+                    <p class="username"><?= htmlspecialchars($username) ?></p>
+                </div>
+            </div>
+        </div>
+    </header>
+
 
 
 <form method="GET">
