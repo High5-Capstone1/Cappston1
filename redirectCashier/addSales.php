@@ -89,49 +89,88 @@ if (isset($_POST['save_sale'])) {
 <head>
     <title>Cashier - Add Sale</title>
     <link rel="stylesheet" href="../Design/forAddSales.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
- <a href="cashierDashboard.php">Back</a>
-<h2>Add Sale</h2>
+ <header class="header">
+        <div class="header-container">
+            <div class="header-content">
+                <div class="header-left">
+                    <a href="cashierDashboard.php" class="back">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="header-title">
+                        <h1>
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            Sales
+                        </h1>
+                        <p>Track your work hours</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p>Store #<?= htmlspecialchars($store_id) ?></p>
+                    <p class="username"><?= htmlspecialchars($username) ?></p>
+                </div>
+            </div>
+        </div>
+    </header>
 
+<div class="form-container">
+     <div class="header-logo">
+            <img src="../../img/mrsofty1.png" alt="Mr. Softy Logo" class="brand-logo" width="50px">
+            </div>
 <form method="POST">
-
-    
-    <label>Product</label>
-    <select id="product_name" required>
+    <div class="form-row">
+     <div class="form-group">
+      <label>Product</label>
+      <select id="product_name" class="form-control" required>
         <option value="">Select Product</option>
         <?php while ($p = $productQuery->fetch_assoc()): ?>
             <option value="<?= $p['product_name'] ?>">
                 <?= $p['product_name'] ?>
             </option>
         <?php endwhile; ?>
-    </select>
+      </select>
+     </div>
 
-  
-    <label>Size</label>
-    <select name="product_id" id="size" required>
+     <div class="form-group">
+      <label>Size</label>
+      <select name="product_id" id="size" class="form-control" required>
         <option value="">Select Size</option>
-    </select>
+      </select>
+     </div>
+    </div>
 
-    
-    <label>Price (₱)</label>
-    <input type="text" id="price" readonly>
+    <div class="form-row">
+     <div class="form-group">
+      <label>Price (₱)</label>
+      <input type="text" id="price" class="form-control" readonly>
+     </div>
 
-    
-    <label>Quantity</label>
-    <input type="number" name="quantity" min="1" value="1" required>
+     <div class="form-group">
+      <label>Quantity</label>
+      <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+     </div>
+    </div>
 
-    
-    <h3>Add Toppings (+₱5 each)</h3>
-    <?php while ($t = $toppings->fetch_assoc()): ?>
+    <div class="toppings-section">
+     <h3>🍰 Add Toppings</h3>
+     <div class="toppings-grid">
+      <?php while ($t = $toppings->fetch_assoc()): ?>
+       <div class="topping-card">
         <label>
             <input type="checkbox" name="toppings[]" value="<?= $t['topping_id'] ?>">
-            <?= $t['topping_name'] ?> (+₱<?= $t['price'] ?>) <br>
+            <span class="topping-name"><?= $t['topping_name'] ?></span>
+            <span class="topping-price">+₱<?= $t['price'] ?></span>
         </label>
-    <?php endwhile; ?>
+       </div>
+      <?php endwhile; ?>
+     </div>
+    </div>
 
-    <button type="submit" name="save_sale">Submit</button>
+    <button type="submit" name="save_sale" class="btn-submit">💳 Complete Sale</button>
 </form>
+</div>
 
 <script>
 const products = <?= json_encode($allProducts); ?>;

@@ -17,6 +17,7 @@ $result = $conn->query($sql);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../Design/forAdminDashboard.css">
 <title>Admin Dashboard - Mr. Softy</title>
 </head>
@@ -25,13 +26,13 @@ $result = $conn->query($sql);
 
 <nav class="navbar">
     <div class="navbar-brand">
-        <span class="brand-icon">🍦</span>
+        <span class="brand-icon"><img src="../img/mrsofty2.png" alt="Mr. Softy Logo" width="100px"></span>
         <span class="brand-name">Mr. Softy</span>
         <span class="brand-subtitle">Admin Panel</span>
     </div>
     <div class="navbar-user">
         <form action="../logout.php" method="POST">
-            <button class="logout-btn">Logout</button>
+            <button class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </form>
     </div>
 </nav>
