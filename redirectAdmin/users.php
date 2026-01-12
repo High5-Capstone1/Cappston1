@@ -47,7 +47,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <div class="box">
     <h2>Existing Users</h2>
     <?php
-    // fetch existing users
+    //fetch existing users
     $sql = "SELECT u.user_id, u.name, u.username, u.role, s.store_id, s.location
     FROM users u LEFT JOIN  store s
             ON u.store_id = s.store_id ORDER BY role";

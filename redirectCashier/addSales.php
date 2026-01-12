@@ -77,7 +77,7 @@ if (isset($_POST['save_sale'])) {
         ");
     }
 
-    $_SESSION['success_message'] = "✅ Sale successfully saved!";
+    $_SESSION['success_message'] = " Sale successfully saved!";
 
     header("Location: receipt.php? sale_id=".$sale_id);
     exit();
