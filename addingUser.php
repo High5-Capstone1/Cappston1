@@ -20,7 +20,13 @@ $sql = "INSERT INTO users (name, username, password, store_id, role)
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("sssis", $name, $username, $hashedPassword, $store_id, $role);
-$stmt->execute();
+
+
+if ($stmt->execute()) {
+        $_SESSION['success'] = "User account successfully created!";
+    } else {
+        $_SESSION['error'] = "Failed to create user.";
+    }
 
 
 header("Location: redirectAdmin/users.php");

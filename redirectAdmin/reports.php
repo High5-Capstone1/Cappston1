@@ -4,20 +4,39 @@ include  '../DBconnect.php';
 
 
 date_default_timezone_set('Asia/Manila');
+$startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
+$endDate   = $_GET['end_date'] ?? date('Y-m-d');
+
+if (empty($startDate) || empty($endDate)) {
+    $startDate = date('Y-m-d', strtotime('-30 days'));
+    $endDate   = date('Y-m-d');
+}
+
+
+$daysRange = (strtotime($endDate) - strtotime($startDate)) / 86400;
+$MAX_DAYS = 366;
+
+if ($daysRange > $MAX_DAYS) {
+    die("Date range too large. Please select up to 1 year only.");
+}
+if ($daysRange <= 31) {
+    $salesGroupBy = "DATE(s.sale_date)";
+    $salesDateFormat = "%Y-%m-%d";
+} elseif ($daysRange <= 180) {
+    $salesGroupBy = "YEAR(s.sale_date), MONTH(s.sale_date)";
+    $salesDateFormat = "%Y-%m";
+} else {
+    $salesGroupBy = "YEAR(s.sale_date)";
+    $salesDateFormat = "%Y";
+}
 
 
 $selectedLocation = isset($_GET['location']) ? $_GET['location'] : 'all';
-
-
-$startDate = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
-$endDate = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
-
 
 $locationFilter = "";
 if ($selectedLocation != 'all') {
     $locationFilter = " AND location = '" . mysqli_real_escape_string($conn, $selectedLocation) . "'";
 }
-
 
 $queryLocations = "SELECT DISTINCT location FROM attendance_summary ORDER BY location";
 $resultLocations = mysqli_query($conn, $queryLocations);
@@ -25,8 +44,7 @@ $locations = [];
 while ($row = mysqli_fetch_assoc($resultLocations)) {
     $locations[] = $row['location'];
 }
-
-
+//for late
 $queryAttendanceOverTime = "
     SELECT 
         DATE(date) as attendance_date,
@@ -88,7 +106,7 @@ if ($selectedLocation != 'all') {
 
 $querySalesOverTime = "
     SELECT 
-        DATE(s.sale_date) as sale_date,
+        DATE_FORMAT(s.sale_date, '$salesDateFormat') AS sale_period,
         SUM(s.subtotal + IFNULL(sts.total_topping, 0)) AS daily_sales
     FROM sales s
     JOIN store st ON s.store_id = st.store_id
@@ -98,16 +116,24 @@ $querySalesOverTime = "
         JOIN toppings t ON stt.topping_id = t.topping_id
         GROUP BY stt.sale_id
     ) sts ON s.sale_id = sts.sale_id
-    WHERE s.sale_date >= '$startDate' AND s.sale_date <= '$endDate'
+    WHERE s.is_deleted = 0
+    AND s.sale_date >= '$startDate' AND s.sale_date <= '$endDate'
     $locationFilterSales
-    GROUP BY DATE(s.sale_date)
-    ORDER BY sale_date ASC
+    GROUP BY DATE_FORMAT(s.sale_date, '$salesDateFormat')  
+    ORDER BY sale_period ASC
 ";
+
+
 $resultSalesOverTime = mysqli_query($conn, $querySalesOverTime);
 $salesOverTimeData = [];
 while ($row = mysqli_fetch_assoc($resultSalesOverTime)) {
     $salesOverTimeData[] = $row;
 }
+
+if (count($salesOverTimeData) > 120) {
+    $salesOverTimeData = array_slice($salesOverTimeData, -120);
+}
+
 
 
 $queryProductQuantity = "
@@ -128,7 +154,6 @@ $productQuantityData = [];
 while ($row = mysqli_fetch_assoc($resultProductQuantity)) {
     $productQuantityData[] = $row;
 }
-
 
 $queryTodaySales = "
     SELECT 
@@ -167,7 +192,7 @@ $resultMonthSales = mysqli_query($conn, $queryMonthSales);
 $monthSales = mysqli_fetch_assoc($resultMonthSales);
 
 // convert sale 2 Json
-$salesDatesJson = json_encode(array_column($salesOverTimeData, 'sale_date'));
+$salesDatesJson = json_encode(array_column($salesOverTimeData, 'sale_period'));
 $salesAmountJson = json_encode(array_column($salesOverTimeData, 'daily_sales'));
 
 $productNamesJson = json_encode(array_column($productQuantityData, 'product_name'));
@@ -190,7 +215,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
             <h1>📊 Live Dashboard</h1>
             <div class="header-controls">
                 <div class="filter-group">
-                    <label for="locationFilter">📍 Location:</label>
+                    <label for="locationFilter">📍Location:</label>
                     <select id="locationFilter">
                         <option value="all" <?php echo $selectedLocation == 'all' ? 'selected' : ''; ?>>All Locations</option>
                         <?php foreach ($locations as $location): ?>

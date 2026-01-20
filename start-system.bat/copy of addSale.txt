@@ -29,56 +29,60 @@ while ($row = $result->fetch_assoc()) {
 }
 
 //topping
+$toppingArr = [];
 $toppings = $conn->query("SELECT * FROM toppings WHERE status='active'");
+while ($t = $toppings->fetch_assoc()) {
+    $toppingArr[] = $t;
+}
 
-if (isset($_POST['add_to_cart'])) {
+//save sale
+if (isset($_POST['save_sale'])) {
 
     $product_id  = $_POST['product_id'];
     $quantity    = $_POST['quantity'];
-    $topping_qty = $_POST['topping_qty'] ?? []; 
+    $topping_ids = $_POST['toppings'] ?? [];
+
 
     $product = $conn->query("
-        SELECT product_name, size, price
-        FROM products
-        WHERE product_id = $product_id
+        SELECT price FROM products WHERE product_id = $product_id
     ")->fetch_assoc();
+    $product_price = $product['price'];
 
-    $toppings = [];
+
     $topping_total = 0;
-
-    foreach ($topping_qty as $tid => $qty) {
-        $t = $conn->query("
-            SELECT topping_name, price
-            FROM toppings
-            WHERE topping_id = $tid
-        ")->fetch_assoc();
-
-        $subtotal = $t['price'] * $qty;
-
-        $toppings[] = [
-            'topping_id' => $tid,
-            'name'       => $t['topping_name'],
-            'price'      => $t['price'],
-            'qty'        => $qty,
-            'subtotal'   => $subtotal
-        ];
-
-        $topping_total += $subtotal;
+    if (!empty($topping_ids)) {
+        $ids = implode(',', $topping_ids);
+        $res = $conn->query("
+            SELECT SUM(price) AS total 
+            FROM toppings 
+            WHERE topping_id IN ($ids)
+        ");
+        $topping_total = $res->fetch_assoc()['total'];
     }
 
-    $subtotal = ($product['price'] * $quantity) + $topping_total;
+    
+    $subtotal = ($product_price * $quantity) + $topping_total;
 
-    $_SESSION['cart'][] = [
-        'product_id'   => $product_id,
-        'product_name' => $product['product_name'],
-        'size'         => $product['size'],
-        'price'        => $product['price'],
-        'quantity'     => $quantity,
-        'toppings'     => $toppings,
-        'subtotal'     => $subtotal
-    ];
+    $conn->query("
+        INSERT INTO sales 
+        (cashier_id, store_id, product_id, quantity, subtotal, sale_date, sale_time)
+        VALUES 
+        ($cashier_id, $store_id, $product_id, $quantity, $subtotal, CURDATE(), CURTIME())
+    ");
 
-    header("Location: addSales.php");
+    $sale_id = $conn->insert_id;
+
+    
+    foreach ($topping_ids as $topping_id) {
+        $conn->query("
+            INSERT INTO sale_toppings (sale_id, topping_id)
+            VALUES ($sale_id, $topping_id)
+        ");
+    }
+
+    $_SESSION['success_message'] = " Sale successfully saved!";
+
+    header("Location: receipt.php? sale_id=".$sale_id);
     exit();
 }
 ?>
@@ -152,48 +156,24 @@ if (isset($_POST['add_to_cart'])) {
      </div>
     </div>
 
-   <div class="toppings-section">
-<h3>🍰 Add Toppings</h3>
-
-<div class="toppings-grid">
-<?php while ($t = $toppings->fetch_assoc()): ?>
-    <div class="topping-card">
-    <label class="topping-header">
-        <input 
-            type="checkbox" 
-            class="topping-check"
-            data-id="<?= $t['topping_id'] ?>"
-        >
-        <span class="topping-name"><?= $t['topping_name'] ?></span>
-        <span class="topping-price">+₱<?= $t['price'] ?></span>
-    </label>
-
-    <div class="topping-qty" style="display:none;">
-        <button type="button" class="qty-btn minus">−</button>
-        <input 
-            type="number"
-            name="topping_qty[<?= $t['topping_id'] ?>]"
-            value="1"
-            min="1"
-            class="qty-input"
-            disabled
-        >
-        <button type="button" class="qty-btn plus">+</button>
+    <div class="toppings-section">
+ <h3>🍰 Add Toppings</h3>
+ <div class="toppings-grid">
+  <?php while ($t = $toppings->fetch_assoc()): ?>
+   <div class="topping-card">
+    <span class="topping-name"><?= $t['topping_name'] ?></span>
+    <span class="topping-price">+₱<?= $t['price'] ?></span>
+    <div class="topping-qty">
+        <button type="button" class="decrease">-</button>
+        <input type="number" name="topping_qty[<?= $t['topping_id'] ?>]" value="0" min="0">
+        <button type="button" class="increase">+</button>
     </div>
-         </div>  
-    <?php endwhile; ?>
-    </div>
-    </div>
+   </div>
+  <?php endwhile; ?>
+ </div>
+</div>
 
-
-    <button type="submit" name="add_to_cart" class="btn-submit">
-                    Add to Cart
-            </button>
-
-    <a href="receipt.php" class="btn-submit" style="text-decoration:none; display:inline-block;">
-                    View Order (<?= count($_SESSION['cart'] ?? []) ?>)
-    </a>
-
+    <button type="submit" name="save_sale" class="btn-submit">Submit</button>
 </form>
 </div>
 
@@ -221,36 +201,16 @@ document.getElementById('size').addEventListener('change', function () {
     const selected = this.options[this.selectedIndex];
     document.getElementById('price').value = selected.dataset.price || '';
 });
-document.querySelectorAll('.topping-check').forEach(check => {
-    check.addEventListener('change', function () {
-        const card = this.closest('.topping-card');
-        const qtyInput = card.querySelector('.qty-input');
-
-        if (this.checked) {
-            card.querySelector('.topping-qty').style.display = 'flex';
-            qtyInput.disabled = false; // enable input
-        } else {
-            card.querySelector('.topping-qty').style.display = 'none';
-            qtyInput.value = 1;
-            qtyInput.disabled = true; // disable input so it won't submit
-        }
+document.querySelectorAll('.topping-card').forEach(card => {
+    const input = card.querySelector('input[type="number"]');
+    card.querySelector('.increase').addEventListener('click', () => {
+        input.value = parseInt(input.value) + 1;
     });
-}); 
-
-document.querySelectorAll('.qty-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-        const input = this.parentElement.querySelector('.qty-input');
-        let value = parseInt(input.value);
-
-        if (this.classList.contains('plus')) {
-            input.value = value + 1;
-        }
-
-        if (this.classList.contains('minus') && value > 1) {
-            input.value = value - 1;
-        }
+    card.querySelector('.decrease').addEventListener('click', () => {
+        if (parseInt(input.value) > 0) input.value = parseInt(input.value) - 1;
     });
 });
+
 </script>
 
 </body>

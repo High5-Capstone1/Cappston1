@@ -1,30 +1,40 @@
 <?php
-include '../DBconnect.php';
 session_start();
+include '../DBconnect.php';
 
 $cashier_id = $_SESSION['user_id'];
-$store_id   = $_SESSION['store_id'];
-$product_id = $_POST['product_id'];
-$quantity   = $_POST['quantity'];
-$toppings   = $_POST['toppings'] ?? [];
+$store_id = $_SESSION['store_id'];
 
-$product = $conn->query("SELECT price FROM products WHERE product_id = $product_id")->fetch_assoc();
-
-$topping_price = count($toppings) * 5;
-$subtotal = ($product['price'] + $topping_price) * $quantity;
-
-$conn->query("
-    INSERT INTO sales (cashier_id, store_id, product_id, quantity, subtotal, sale_date, sale_time)
-    VALUES ($cashier_id, $store_id, $product_id, $quantity, $subtotal, CURDATE(), CURTIME())
-");
-
-$sale_id = $conn->insert_id;
-
-foreach ($toppings as $topping_id) {
-    $conn->query("
-        INSERT INTO sale_toppings (sale_id, topping_id)
-        VALUES ($sale_id, $topping_id)
-    ");
+if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
+    die("Cart is empty");
 }
 
-header("Location: salesHistory.php");
+if (isset($_POST['confirm_order'])) {
+
+    foreach ($_SESSION['cart'] as $item) {
+        $stmt = $conn->prepare("
+            INSERT INTO sales (cashier_id, store_id, product_id, quantity, subtotal, sale_date, sale_time)
+            VALUES (?, ?, ?, ?, ?, CURDATE(), CURTIME())
+        ");
+        $stmt->bind_param("iiiid", $cashier_id, $store_id, $item['product_id'], $item['quantity'], $item['subtotal']);
+        $stmt->execute();
+        $sale_id = $stmt->insert_id;
+        $stmt->close();
+
+        foreach ($item['toppings'] as $t) {
+            $stmt = $conn->prepare("
+                INSERT INTO sale_toppings (sale_id, topping_id, quantity)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->bind_param("iii", $sale_id, $t['topping_id'], $t['qty']);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+
+    unset($_SESSION['cart']);
+    $_SESSION['success_message'] = "Order confirmed and saved!";
+    header("Location: addSales.php");
+    exit();
+}
+?>

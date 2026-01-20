@@ -2,7 +2,7 @@
 session_start();
 include '../DBconnect.php';
 
-// check if admin acc 
+
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit();
@@ -35,8 +35,24 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                 </div>
             </div>
         </div>
-    </header>
-    <div class="content">
+                </header>
+                <div class="content">
+                <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert success">
+                <i class="fas fa-check-circle"></i>
+                <?= $_SESSION['success']; ?>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+                <?php endif; ?>
+
+                <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert error">
+        <i class="fas fa-times-circle"></i>
+        <?= $_SESSION['error']; ?>
+             </div>
+                    <?php unset($_SESSION['error']); ?>
+                    <?php endif; ?>
+
 
         <div class="page-container">
          <div class="box">

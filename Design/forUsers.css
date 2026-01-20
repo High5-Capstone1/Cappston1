@@ -280,3 +280,25 @@ table td:nth-child(4) {
         padding: 10px;
     }
 }
+.alert {
+    padding: 12px 16px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alert.success {
+    background: #e7f7ed;
+    color: #1e7e34;
+    border-left: 5px solid #28a745;
+}
+
+.alert.error {
+    background: #fdecea;
+    color: #a71d2a;
+    border-left: 5px solid #dc3545;
+}
+

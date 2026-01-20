@@ -21,6 +21,7 @@ $sql = "
 SELECT 
     p.product_name,
     p.size,
+    SUM(s.subtotal) AS product_total,
     SUM(s.quantity) AS total_qty,
     SUM(IFNULL(sts.total_topping,0)) AS toppings_total,
     SUM(s.subtotal + IFNULL(sts.total_topping, 0)) AS total_sales,
@@ -132,6 +133,7 @@ $result = $stmt->get_result();
                 <th>Product</th>
                 <th>Size</th>
                 <th>Total Qty Sold</th>
+                <th>Total Product Price</th>
                 <th>Toppings Sales</th>
                 <th>Total Sales</th>
                 <th>Cashier</th>
@@ -146,6 +148,7 @@ $result = $stmt->get_result();
                     <td><?= htmlspecialchars($row['product_name']) ?></td>
                     <td><?= htmlspecialchars($row['size']) ?></td>
                     <td><?= $row['total_qty'] ?></td>
+                    <td class="money">₱<?= number_format($row['product_total'], 2) ?></td>
                     <td class="money">₱<?= number_format($row['toppings_total'], 2) ?></td>
                     <td class="money">₱<?= number_format($row['total_sales'], 2) ?></td>
                     <td><?= htmlspecialchars($row['cashier_name']) ?></td>

@@ -7,78 +7,114 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'cashier') {
     exit();
 }
 
-if (!isset($_GET['sale_id'])) {
-    die("Sale ID not provided");
+$cashier_id = $_SESSION['user_id'];
+$store_id   = $_SESSION['store_id'];
+
+
+if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
+    die("Cart is empty");
 }
 
-$sale_id = intval($_GET['sale_id']);
-
-//sale info
-$sale = $conn->query("
-    SELECT s.sale_id, s.quantity, s.subtotal, s.sale_date, s.sale_time,
-           p.product_name, p.size, p.price,
-           u.name AS cashier_name
-    FROM sales s
-    JOIN products p ON s.product_id = p.product_id
-    JOIN users u ON s.cashier_id = u.user_id
-    WHERE s.sale_id = $sale_id
-")->fetch_assoc();
-
-if (!$sale) {
-    die("Sale not found");
+//remove order
+if (isset($_POST['remove_item'])) {
+    $index = intval($_POST['remove_item']); 
+    if (isset($_SESSION['cart'][$index])) {
+        unset($_SESSION['cart'][$index]);
+        $_SESSION['cart'] = array_values($_SESSION['cart']); 
+    }
+    header("Location: receipt.php"); 
+    exit();
 }
-// sale topping
-$toppings = $conn->query("
-    SELECT t.topping_name, t.price
-    FROM sale_toppings st
-    JOIN toppings t ON st.topping_id = t.topping_id
-    WHERE st.sale_id = $sale_id
-");
+
+
+if (isset($_POST['confirm_order'])) {
+
+    foreach ($_SESSION['cart'] as $item) {
+
+        $conn->query("
+            INSERT INTO sales
+            (cashier_id, store_id, product_id, quantity, subtotal, sale_date, sale_time)
+            VALUES
+            ($cashier_id, $store_id, {$item['product_id']},
+             {$item['quantity']}, {$item['subtotal']},
+             CURDATE(), CURTIME())
+        ");
+
+        $sale_id = $conn->insert_id;
+
+        foreach ($item['toppings'] as $t) {
+            $conn->query("
+                INSERT INTO sale_toppings (sale_id, topping_id, quantity)
+                VALUES ($sale_id, {$t['topping_id']}, {$t['qty']})
+            ");
+        }
+    }
+
+    unset($_SESSION['cart']); //clear cart after saving
+    $_SESSION['success_message'] = "Order confirmed and saved!";
+    header("Location: addSales.php?success=1");
+    exit();
+}
 ?>
+
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Receipt - Sale #<?= $sale_id ?></title>
+    <title>Receipt - Cart</title>
     <link rel="stylesheet" href="../Design/forReceipt.css">
-
 </head>
 <body>
-<a href="addSales.php">Back</a>
-<h2>🍦 Mr.Softy Ice Cream</h2>
-<p>Cashier: <?= $sale['cashier_name'] ?><br>
-Date: <?= $sale['sale_date'] ?> <?= date("h:i A", strtotime($sale['sale_time'])) ?></p>
+    <a href="addSales.php">← Add More Items</a>
+    <h2>🧾 Order Summary - Mr.Softy Ice Cream</h2>
 
-<table>
-    <tr>
-        <th>Item</th>
-        <th>Qty</th>
-        <th>Price</th>
-    </tr>
-    <tr>
-        <td><?= $sale['product_name'] ?> (<?= $sale['size'] ?>)</td>
-        <td><?= $sale['quantity'] ?></td>
-        <td>₱<?= number_format($sale['price'] * $sale['quantity'],2) ?></td>
-    </tr>
-    <?php
-    $topping_total = 0;
-    while($t = $toppings->fetch_assoc()) {
-        $topping_total += $t['price'];
-        echo "<tr>
-                <td>+ {$t['topping_name']}</td>
-                <td>1</td>
-                <td>₱".number_format($t['price'],2)."</td>
-              </tr>";
-    }
-    ?>
-    <tr class="total">
-        <td colspan="2">Total</td>
-        <td>₱<?= number_format($sale['subtotal'],2) ?></td>
-    </tr>
-</table>
+    <table border="1" width="100%">
+        <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Action</th>
+        </tr>
 
-<p class="center">
-    Thank you for your purchase!<br>
-    <button onclick="window.print()">Print Receipt</button>
-</p>
+        <?php
+        $grand_total = 0;
+        foreach ($_SESSION['cart'] as $index => $item):
+            $grand_total += $item['subtotal'];
+        ?>
+        <tr>
+            <td><?= htmlspecialchars($item['product_name']) ?> (<?= htmlspecialchars($item['size']) ?>)</td>
+            <td><?= $item['quantity'] ?></td>
+            <td>₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
+            <td>
+                <form method="POST" style="margin:0;">
+                    <button type="submit" name="remove_item" value="<?= $index ?>">Remove</button>
+                </form>
+            </td>
+        </tr>
+
+        <?php foreach ($item['toppings'] as $t): ?>
+        <tr>
+            <td>+ <?= htmlspecialchars($t['name']) ?></td>
+            <td><?= $t['qty'] ?></td>
+            <td>₱<?= number_format($t['subtotal'],2) ?></td>
+            
+            <td></td>
+        </tr>
+        <?php endforeach; ?>
+
+        <?php endforeach; ?>
+
+        <tr>
+            <th colspan="2">TOTAL</th>
+            <th>₱<?= number_format($grand_total,2) ?></th>
+            <th></th>
+        </tr>
+    </table>
+
+    <form method="POST">
+        <button type="submit" name="confirm_order" class="btn-submit">
+            Confirm Order
+        </button>
+    </form>
 </body>
 </html>
