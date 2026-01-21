@@ -88,16 +88,42 @@ $result = $stmt->get_result();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin | Sales Inventory Summary</title>
     <link rel="stylesheet" href="../Design/forInventory.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-
-
-    <a href="adminDashboard.php" class="back-link"> Back</a>
-</div>
-
-<h1> Sales Inventory Summary</h1>
-
+<header class="header">
+        <div class="header-container">
+            <div class="header-content">
+                <div class="header-left">
+                    <a href="adminDashboard.php" class="back-btn">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="header-title">
+                        <h1>
+                            <i class="fas fa-clipboard-list"></i>
+                            Sales Inventory Summary
+                        </h1>
+                        <p>Manage all employee attendance</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p></p>
+                    <p class="admin-name"></p>
+                </div>
+            </div>
+        </div>
+    </header>
+<div class="container">
+    <div class="filter-section">
+            <div class="filter-header">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i>
+                    <h2>Filter Records</h2>
+                </div>
+            </div>
 <form method="GET" class="filter-form">
+    <div class="filter-grid">
+         <div class="filter-field">
     <label>
         Store:
         <select name="store_id">
@@ -110,35 +136,42 @@ $result = $stmt->get_result();
             <?php endwhile; ?>
         </select>
     </label>
-
+    </div>
+    <div class="filter-field">
     <label>
         From:
         <input type="date" name="start_date" value="<?= $filter_start ?>">
     </label>
+    </div>
 
+    <div class="filter-field">
     <label>
         To:
         <input type="date" name="end_date" value="<?= $filter_end ?>">
     </label>
-
-    <button type="submit">🔍 Filter</button>
-    <a href="sales.php" class="reset-link">Reset</a>
+    </div>
+     </div>
+    <div class="filter-actions">
+    <button type="submit" class="btn btn-filter">🔍 Filter</button>
+    <a href="sales.php" class="btn btn-reset">Reset</a>
+    </div>
 </form>
+    </div>
 
 
 <div class="table-wrapper">
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Size</th>
-                <th>Total Qty Sold</th>
-                <th>Total Product Price</th>
-                <th>Toppings Sales</th>
-                <th>Total Sales</th>
-                <th>Cashier</th>
-                <th>Store Location</th>
-                <th>Sale Date</th>
+                <th><i class="fa-solid fa-box-open"></i>Product</th>
+                <th><i class="fa-solid fa-ruler"></i>Size</th>
+                <th><i class="fa-solid fa-hashtag"></i>Total Qty Sold</th>
+                <th><i class="fa-solid fa-receipt"></i>Total Product Price</th>
+                <th><i class="fa-solid fa-circle-plus"></i>Toppings Sales</th>
+                <th><i class="fa-solid fa-peso-sign"></i>Total Sales</th>
+                <th><i class="fa-solid fa-cash-register"></i>Cashier</th>
+                <th><i class="fa-solid fa-location-dot"></i>Store Location</th>
+                <th><i class="fa-solid fa-calendar-days"></i>Sale Date</th>
             </tr>
         </thead>
         <tbody>
@@ -163,6 +196,7 @@ $result = $stmt->get_result();
             <?php endif; ?>
         </tbody>
     </table>
+</div>
 </div>
 
 </body>

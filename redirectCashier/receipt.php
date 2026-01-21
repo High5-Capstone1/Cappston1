@@ -63,58 +63,92 @@ if (isset($_POST['confirm_order'])) {
 <head>
     <title>Receipt - Cart</title>
     <link rel="stylesheet" href="../Design/forReceipt.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <a href="addSales.php">← Add More Items</a>
-    <h2>🧾 Order Summary - Mr.Softy Ice Cream</h2>
+    <a href="addSales.php" class="back-link">
+        <i class="fas fa-arrow-left"></i> Add More Items
+    </a>
 
-    <table border="1" width="100%">
-        <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Price</th>
-            <th>Action</th>
-        </tr>
+    <div class="receipt-container">
+        <div class="receipt-paper">
+            <div class="receipt-header">
+                <div class="store-logo">
+                    <img src="../img/mrsofty1.png" alt="" width="120px">
+                </div>
+                <div class="store-tagline">Signature Creations</div>
+                <div class="receipt-info">
+                    <div><span>Date:</span><span><?= date('m/d/Y') ?></span></div>
+                    <div><span>Time:</span><span><?= date('h:i A') ?></span></div>
+                    <div><span>Cashier:</span><span><?= $_SESSION['name'] ?? 'Cashier' ?></span></div>
+                    <div><span>Receipt #:</span><span><?= rand(10000, 99999) ?></span></div>
+                </div>
+            </div>
 
-        <?php
-        $grand_total = 0;
-        foreach ($_SESSION['cart'] as $index => $item):
-            $grand_total += $item['subtotal'];
-        ?>
-        <tr>
-            <td><?= htmlspecialchars($item['product_name']) ?> (<?= htmlspecialchars($item['size']) ?>)</td>
-            <td><?= $item['quantity'] ?></td>
-            <td>₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
-            <td>
-                <form method="POST" style="margin:0;">
-                    <button type="submit" name="remove_item" value="<?= $index ?>">Remove</button>
+            <div class="receipt-body">
+                <div class="section-title">Order Items</div>
+
+                <table class="receipt-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $grand_total = 0;
+                        foreach ($_SESSION['cart'] as $index => $item):
+                            $grand_total += $item['subtotal'];
+                        ?>
+                        <tr>
+                            <td>
+                                <div class="item-name"><?= htmlspecialchars($item['product_name']) ?></div>
+                                <div class="item-size">(<?= htmlspecialchars($item['size']) ?>)</div>
+                            </td>
+                            <td><?= $item['quantity'] ?></td>
+                            <td>₱<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
+                            <td>
+                                <form method="POST" style="margin:0;">
+                                    <button type="submit" name="remove_item" value="<?= $index ?>" class="remove-btn">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        <?php foreach ($item['toppings'] as $t): ?>
+                        <tr class="topping-row">
+                            <td class="item-name"><?= htmlspecialchars($t['name']) ?></td>
+                            <td><?= $t['qty'] ?></td>
+                            <td>₱<?= number_format($t['subtotal'],2) ?></td>
+                            <td></td>
+                        </tr>
+                        <?php endforeach; ?>
+
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <div class="receipt-total">
+                    <div class="total-row">
+                        <span class="total-label">Total</span>
+                        <span class="total-amount">₱<?= number_format($grand_total,2) ?></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="receipt-footer">
+                <form method="POST">
+                    <button type="submit" name="confirm_order" class="confirm-btn">
+                        <i class="fas fa-check-circle"></i> Confirm Order
+                    </button>
                 </form>
-            </td>
-        </tr>
-
-        <?php foreach ($item['toppings'] as $t): ?>
-        <tr>
-            <td>+ <?= htmlspecialchars($t['name']) ?></td>
-            <td><?= $t['qty'] ?></td>
-            <td>₱<?= number_format($t['subtotal'],2) ?></td>
-            
-            <td></td>
-        </tr>
-        <?php endforeach; ?>
-
-        <?php endforeach; ?>
-
-        <tr>
-            <th colspan="2">TOTAL</th>
-            <th>₱<?= number_format($grand_total,2) ?></th>
-            <th></th>
-        </tr>
-    </table>
-
-    <form method="POST">
-        <button type="submit" name="confirm_order" class="btn-submit">
-            Confirm Order
-        </button>
-    </form>
+                <div class="thank-you">Thank you for your order!</div>
+                <div class="thank-you">Please come again 😊</div>
+                <div class="barcode">|||  ||  |||  |  ||  |||</div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

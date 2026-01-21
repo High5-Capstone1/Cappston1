@@ -60,47 +60,61 @@ while ($row = $sales->fetch_assoc()) {
         <div class="header-container">
             <div class="header-content">
                 <div class="header-left">
-                    <a href="cashierDashboard.php" class="back">
+                    <a href="cashierDashboard.php" class="back-btn">
                         <i class="fas fa-arrow-left"></i>
                     </a>
                     <div class="header-title">
                         <h1>
-                            <i class="fa-solid fa-chart-line"></i>
-                            <h1>Sales History</h1>
+                            <i class="fas fa-clipboard-list"></i>
+                            Sales History
                         </h1>
-                        <p>Track your work hours</p>
+                        <p></p>
                     </div>
                 </div>
                 <div class="header-right">
-                    <p>Store #<?= htmlspecialchars($cashier_id) ?></p>
-                    <p class="username"><?= htmlspecialchars($username) ?></p>
+                    <p></p>
+                    <p class="admin-name"></p>
                 </div>
             </div>
         </div>
     </header>
 
+    <div class="container">
+    <div class="filter-section">
+        <div class="filter-header">
+            <div class="filter-title">
+                <i class="fas fa-sliders-h"></i>
+                <h2>Filter Records</h2>
+            </div>
+        </div>
 
-
-<form method="GET">
+<form method="GET" class="filter-form">
+    <div class="filter-grid">
+        <div class="filter-field">
     <label>From:</label>
     <input type="date" name="from" value="<?= $from ?>">
-
+</div>
+      <div class="filter-field">
     <label>To:</label>
     <input type="date" name="to" value="<?= $to ?>">
-
-    <button type="submit">Filter</button>
+</div>
+</div>
+    <div class="filter-actions">
+    <button type="submit" class="btn btn-filter"><i class="fa-solid fa-magnifying-glass"></i>Filter</button>
+</div>
 </form>
+</div>
 
 
 <table>
     <tr>
-        <th>Date</th>
-        <th>Time</th>
-        <th>Product</th>
-        <th>Toppings</th>
-        <th>Size</th>
-        <th>Qty</th>
-        <th>Subtotal</th>
+        <th><i class="fa-solid fa-calendar-days"></i>Date</th>
+        <th><i class="fa-solid fa-clock"></i>Time</th>
+        <th><i class="fa-solid fa-ice-cream"></i>Product</th>
+        <th><i class="fa-solid fa-bowl-food"></i>Toppings</th>
+        <th><i class="fa-solid fa-ruler"></i>Size</th>
+        <th><i class="fa-solid fa-hashtag"></i>Qty</th>
+        <th><i class="fa-solid fa-money-bill-wave"></i>Subtotal</th>
     </tr>
 
     <?php if (!empty($rows)): ?>
@@ -125,6 +139,7 @@ while ($row = $sales->fetch_assoc()) {
 <div class="total">
     💰 Total Sales: ₱<?= number_format($total_sales, 2) ?>
 </div>
+    </div>
 
 </body>
 </html>
