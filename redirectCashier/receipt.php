@@ -15,7 +15,7 @@ $store_id   = $_SESSION['store_id'];
 
 // Get only the sale IDs from this specific transaction
 $last_sale_ids = $_SESSION['last_sale_ids'] ?? [];
-unset($_SESSION['last_sale_ids']); // clear after reading so next order starts fresh
+unset($_SESSION['last_sale_ids']); //clear after reading so next order starts fresh
 
 $sales = [];
 if (!empty($last_sale_ids)) {
@@ -37,7 +37,7 @@ if (!empty($last_sale_ids)) {
     }
 }
 
-// Get toppings for each sale
+//get toppings for each sale
 $sale_toppings = [];
 foreach ($sales as $sale) {
     $t_stmt = $conn->prepare("

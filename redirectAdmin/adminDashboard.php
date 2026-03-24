@@ -6,7 +6,6 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit();
 }
-
 //fetch user
 $sql = "SELECT user_id, name, username, role, store_id FROM users ORDER BY role";
 $result = $conn->query($sql);
@@ -222,7 +221,6 @@ function updateTime() {
 }
 updateTime();
 setInterval(updateTime, 1000);
-
 
 const path = window.location.pathname.split('/').pop();
 document.querySelectorAll('.dashboard-card').forEach(card => {
