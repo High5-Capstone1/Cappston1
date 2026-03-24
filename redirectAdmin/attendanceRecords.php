@@ -1,6 +1,19 @@
 <?php
-session_start();
+require_once '../session.php';
 include '../DBconnect.php';
+
+define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
+define('ENCRYPTION_METHOD', 'AES-256-CBC');
+
+function decryptData($data)
+{
+    if (empty($data)) return $data;
+    $data = base64_decode($data);
+    $parts = explode('::', $data, 2);
+    if (count($parts) !== 2) return $data;
+    list($iv, $encrypted) = $parts;
+    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../../index.php");
@@ -16,9 +29,21 @@ $filter_end   = $_GET['end_date'] ?? '';
 $filter_role  = $_GET['role'] ?? '';
 $filter_store = $_GET['store_id'] ?? '';
 
+// delete button
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $delete_id = $_POST['delete_id'];
+    $del_sql = "DELETE FROM attendance WHERE attendance_id = ?";
+    $del_stmt = $conn->prepare($del_sql);
+    $del_stmt->bind_param("i", $delete_id);
+    $del_stmt->execute();
+    $message = "Attendance record deleted successfully.";
+    $message_type = "success";
+}
 
+// Fetch ALL records with no role filter in SQL (we'll filter in PHP since role is encrypted)
 $sql = "
-    SELECT a.attendance_id, a.date, a.time_in, a.time_out, u.name, u.role, a.store_id, s.location
+    SELECT a.attendance_id, a.date, a.time_in, a.time_out, a.role AS stored_role,
+           u.name, u.role AS user_role, a.store_id, s.location
     FROM attendance a
     LEFT JOIN users u ON a.user_id = u.user_id
     LEFT JOIN store s ON a.store_id = s.store_id
@@ -27,18 +52,6 @@ $sql = "
 
 $params = [];
 $types = "";
-
-// delete button
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
-    $delete_id = $_POST['delete_id'];
-    $del_sql = "DELETE FROM attendance WHERE attendance_id = ?";
-    $del_stmt = $conn->prepare($del_sql);
-    $del_stmt->bind_param("i", $delete_id);
-    $del_stmt->execute();
-    
-    $message = "Attendance record deleted successfully.";
-    $message_type = "success";
-}
 
 if (!empty($filter_start)) {
     $sql .= " AND a.date >= ?";
@@ -50,32 +63,36 @@ if (!empty($filter_end)) {
     $params[] = $filter_end;
     $types .= "s";
 }
-
-if (!empty($filter_role)) {
-    $sql .= " AND u.role = ?";
-    $params[] = $filter_role;
-    $types .= "s";
-}
-
 if (!empty($filter_store)) {
     $sql .= " AND a.store_id = ?";
     $params[] = $filter_store;
     $types .= "i";
 }
 
-$sql .= " ORDER BY a.date DESC, u.role ASC";
+$sql .= " ORDER BY a.date DESC";
 
 $stmt = $conn->prepare($sql);
-
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
-
 $stmt->execute();
-$history = $stmt->get_result();
+$result = $stmt->get_result();
 
+// Fetch all rows and decrypt, then apply role filter in PHP
+$rows = [];
+while ($row = $result->fetch_assoc()) {
+    $row['decrypted_name'] = decryptData($row['name']) ?? 'N/A';
+    $row['decrypted_role'] = decryptData($row['user_role']) ?? 'N/A';
 
-$total_records = $history->num_rows;
+    // Apply role filter in PHP after decrypting
+    if (!empty($filter_role) && strtolower($row['decrypted_role']) !== strtolower($filter_role)) {
+        continue;
+    }
+
+    $rows[] = $row;
+}
+
+$total_records = count($rows);
 ?>
 
 <!DOCTYPE html>
@@ -84,16 +101,11 @@ $total_records = $history->num_rows;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Attendance Records</title>
-    
-
     <link rel="stylesheet" href="../Design/forAttendanceRecord.css">
-    
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
- 
     <header class="header">
         <div class="header-container">
             <div class="header-content">
@@ -118,7 +130,6 @@ $total_records = $history->num_rows;
     </header>
 
     <div class="container">
-        
 
         <?php if(isset($message)): ?>
         <div class="message <?= $message_type ?>">
@@ -137,7 +148,6 @@ $total_records = $history->num_rows;
                     <p class="stat-value"><?= $total_records ?></p>
                 </div>
             </div>
-            
             <div class="stat-card">
                 <div class="stat-icon green">
                     <i class="fas fa-calendar-check"></i>
@@ -147,7 +157,6 @@ $total_records = $history->num_rows;
                     <p class="stat-value"><?= date('M d, Y') ?></p>
                 </div>
             </div>
-            
             <div class="stat-card">
                 <div class="stat-icon purple">
                     <i class="fas fa-filter"></i>
@@ -159,7 +168,6 @@ $total_records = $history->num_rows;
                     </p>
                 </div>
             </div>
-            
             <div class="stat-card">
                 <div class="stat-icon orange">
                     <i class="fas fa-clock"></i>
@@ -171,7 +179,6 @@ $total_records = $history->num_rows;
             </div>
         </div>
 
-
         <div class="filter-section">
             <div class="filter-header">
                 <div class="filter-title">
@@ -179,7 +186,6 @@ $total_records = $history->num_rows;
                     <h2>Filter Records</h2>
                 </div>
             </div>
-            
             <form method="GET" action="" class="filter-form">
                 <div class="filter-grid">
                     <div class="filter-field">
@@ -189,7 +195,6 @@ $total_records = $history->num_rows;
                         </label>
                         <input type="date" name="start_date" value="<?= htmlspecialchars($filter_start) ?>">
                     </div>
-                    
                     <div class="filter-field">
                         <label>
                             <i class="fas fa-calendar-alt"></i>
@@ -197,7 +202,6 @@ $total_records = $history->num_rows;
                         </label>
                         <input type="date" name="end_date" value="<?= htmlspecialchars($filter_end) ?>">
                     </div>
-                    
                     <div class="filter-field">
                         <label>
                             <i class="fas fa-user-tag"></i>
@@ -209,7 +213,6 @@ $total_records = $history->num_rows;
                             <option value="staff" <?= $filter_role=='staff'?'selected':'' ?>>Staff</option>
                         </select>
                     </div>
-                    
                     <div class="filter-field">
                         <label>
                             <i class="fas fa-store"></i>
@@ -218,7 +221,6 @@ $total_records = $history->num_rows;
                         <input type="number" name="store_id" placeholder="Enter Store ID" value="<?= htmlspecialchars($filter_store) ?>">
                     </div>
                 </div>
-                
                 <div class="filter-actions">
                     <button type="submit" class="btn btn-filter">
                         <i class="fas fa-search"></i>
@@ -231,7 +233,6 @@ $total_records = $history->num_rows;
                 </div>
             </form>
         </div>
-
 
         <div class="records-section">
             <div class="records-header">
@@ -259,8 +260,8 @@ $total_records = $history->num_rows;
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if($history->num_rows > 0): ?>
-                            <?php while($row = $history->fetch_assoc()): ?>
+                        <?php if(count($rows) > 0): ?>
+                            <?php foreach($rows as $row): ?>
                             <tr>
                                 <td>
                                     <span class="date-badge">
@@ -270,14 +271,14 @@ $total_records = $history->num_rows;
                                 <td>
                                     <div class="user-cell">
                                         <div class="user-avatar">
-                                            <?= strtoupper(substr($row['name'], 0, 1)) ?>
+                                            <?= strtoupper(substr($row['decrypted_name'], 0, 1)) ?>
                                         </div>
-                                        <span><?= htmlspecialchars($row['name']) ?></span>
+                                        <span><?= htmlspecialchars($row['decrypted_name']) ?></span>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="role-badge <?= strtolower($row['role']) ?>">
-                                        <?= ucfirst($row['role']) ?>
+                                    <span class="role-badge <?= strtolower($row['decrypted_role']) ?>">
+                                        <?= ucfirst($row['decrypted_role']) ?>
                                     </span>
                                 </td>
                                 <td>
@@ -288,7 +289,7 @@ $total_records = $history->num_rows;
                                 <td>
                                     <span class="location-text">
                                         <i class="fas fa-map-marker-alt"></i>
-                                        <?= htmlspecialchars($row['location']) ?>
+                                        <?= htmlspecialchars($row['location'] ?? 'N/A') ?>
                                     </span>
                                 </td>
                                 <td>
@@ -320,7 +321,7 @@ $total_records = $history->num_rows;
                                     </form>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="8">
@@ -339,20 +340,14 @@ $total_records = $history->num_rows;
     </div>
 
     <script>
-
         function updateTime() {
             const now = new Date();
-            const options = { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
-            };
+            const options = { hour: '2-digit', minute: '2-digit', hour12: true };
             const timeElement = document.getElementById('currentTime');
             if (timeElement) {
                 timeElement.textContent = now.toLocaleTimeString('en-US', options);
             }
         }
-        
         updateTime();
         setInterval(updateTime, 1000);
     </script>

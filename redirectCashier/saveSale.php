@@ -1,6 +1,5 @@
 <?php
-session_start();
-include '../DBconnect.php';
+require_once '../session.php';
 
 $cashier_id = $_SESSION['user_id'];
 $store_id = $_SESSION['store_id'];

@@ -1,6 +1,18 @@
 <?php
-session_start();
+require_once '../session.php';
 include '../DBconnect.php';
+
+define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
+define('ENCRYPTION_METHOD', 'AES-256-CBC');
+
+function decryptData($data) {
+    if (empty($data)) return $data;
+    $data = base64_decode($data);
+    $parts = explode('::', $data, 2);
+    if (count($parts) !== 2) return $data;
+    list($iv, $encrypted) = $parts;
+    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
 
 if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['cashier','staff'])) {
     header("Location: roleLogin/login.php");
@@ -95,7 +107,7 @@ $history = $stmt->get_result();
         <div class="header-container">
             <div class="header-content">
                 <div class="header-left">
-                    <a href="<?= $role === 'cashier' ? 'cashierDashboard.php' : 'dashboard.php' ?>" class="back-btn">
+                    <a href="<?= $role === 'cashier' ? 'cashierDashboard.php' : 'cashierDashboard.php' ?>" class="back-btn">
                         <i class="fas fa-arrow-left"></i>
                     </a>
                     <div class="header-title">
@@ -162,6 +174,14 @@ $history = $stmt->get_result();
                                 <p>Clocked In</p>
                             </div>
                             <p>Time In: <span class="time-value"><?= date('h:i A', strtotime($todayAttendance['time_in'])) ?></span></p>
+                            <p>
+                             Status: 
+                        <?php if ($todayAttendance['time_in'] > '09:00:00'): ?>
+                      <span class="late-badge">Late</span>
+                        <?php else: ?>
+                        <span class="on-time-badge">On-Time</span>
+    <?php endif; ?>
+</p>
                         </div>
                         
                         <form method="POST">
@@ -267,7 +287,7 @@ $history = $stmt->get_result();
                                             </span>
                                         </td>
                                         <td>
-                                            <span><?= htmlspecialchars($row['name']) ?></span>
+                                            <span><?= htmlspecialchars(decryptData($row['name'])) ?></span>
                                         </td>
                                         <td>
                                             <?php if ($row['time_in']): ?>

@@ -17,24 +17,22 @@
         <h1>Mr. Softy</h1>
         <div class="subtitle">Signature Creations</div>
     </div>
-    
 
     <div class="welcome-section">
         <h2>Sales Management System</h2>
-        <p>Select your role to continue</p>
     </div>
 
-
     <div class="role-buttons">
-        <a href="roleLogin/login.php" class="role-card staff">
-            
+      
+        <a href="roleLogin/adminLogin.php" class="role-card admin">
             <div class="card-content">
-                <h3>Login</h3>
-                <p>Manage Sales & Inventory</p>
+                <h3>Admin</h3>
+                <p>Sales & Report</p>
             </div>
             <div class="card-arrow">→</div>
         </a>
     </div>
+
     <div class="footer">
         <p> Fresh • Delicious • Daily </p>
     </div>

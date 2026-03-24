@@ -1,6 +1,20 @@
 <?php
-session_start();
+require_once '../session.php';
 include '../DBconnect.php';
+
+define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
+define('ENCRYPTION_METHOD', 'AES-256-CBC');
+
+function decryptData($data)
+{
+    if (empty($data)) return $data;
+    $data = base64_decode($data);
+    $parts = explode('::', $data, 2);
+    if (count($parts) !== 2) return $data; 
+    list($iv, $encrypted) = $parts;
+    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
+
 
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
@@ -21,10 +35,10 @@ $sql = "
 SELECT 
     p.product_name,
     p.size,
-    SUM(s.subtotal) AS product_total,
+    SUM(s.subtotal) AS total_sales,
     SUM(s.quantity) AS total_qty,
     SUM(IFNULL(sts.total_topping,0)) AS toppings_total,
-    SUM(s.subtotal + IFNULL(sts.total_topping, 0)) AS total_sales,
+    SUM(s.subtotal - IFNULL(sts.total_topping, 0)) AS product_total,
     u.name AS cashier_name,
     st.location,
     s.sale_date
@@ -33,10 +47,10 @@ JOIN products p ON s.product_id = p.product_id
 JOIN users u ON s.cashier_id = u.user_id
 JOIN store st ON s.store_id = st.store_id
 LEFT JOIN (
-    SELECT st.sale_id, SUM(t.price) AS total_topping
+    SELECT st.sale_id, SUM(t.price * st.quantity) AS total_topping
     FROM sale_toppings st
     JOIN toppings t ON st.topping_id = t.topping_id
-    GROUP BY st.sale_id
+    GROUP BY st.sale_id     
 ) sts ON s.sale_id = sts.sale_id
 WHERE 1=1
 ";
@@ -78,7 +92,17 @@ if (!empty($params)) {
 }
 
 $stmt->execute();
-$result = $stmt->get_result();
+$sales = $stmt->get_result();
+
+$total_sales = 0;
+$rows = [];
+while ($row = $sales->fetch_assoc()) {
+    $rows[] = $row;
+}
+$grand_total = 0;
+foreach ($rows as $row) {
+    $grand_total += $row['total_sales'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -172,28 +196,39 @@ $result = $stmt->get_result();
                 <th><i class="fa-solid fa-cash-register"></i>Cashier</th>
                 <th><i class="fa-solid fa-location-dot"></i>Store Location</th>
                 <th><i class="fa-solid fa-calendar-days"></i>Sale Date</th>
+
             </tr>
         </thead>
         <tbody>
-            <?php if ($result->num_rows > 0): ?>
-                <?php while ($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row['product_name']) ?></td>
-                    <td><?= htmlspecialchars($row['size']) ?></td>
-                    <td><?= $row['total_qty'] ?></td>
-                    <td class="money">₱<?= number_format($row['product_total'], 2) ?></td>
-                    <td class="money">₱<?= number_format($row['toppings_total'], 2) ?></td>
-                    <td class="money">₱<?= number_format($row['total_sales'], 2) ?></td>
-                    <td><?= htmlspecialchars($row['cashier_name']) ?></td>
-                    <td><?= htmlspecialchars($row['location']) ?></td>
-                    <td><?= $row['sale_date'] ?></td>
-                </tr>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="8">No sales data found</td>
-                </tr>
-            <?php endif; ?>
+       <?php if (count($rows) > 0): ?>
+    <?php foreach ($rows as $row): ?>
+    <tr>
+        <td><?= htmlspecialchars($row['product_name']) ?></td>
+        <td><?= htmlspecialchars($row['size']) ?></td>
+        <td><?= $row['total_qty'] ?></td>
+        <td class="money">₱<?= number_format($row['product_total'], 2) ?></td>
+        <td class="money">₱<?= number_format($row['toppings_total'], 2) ?></td>
+        <td class="money">₱<?= number_format($row['total_sales'], 2) ?></td>
+        <td><?= htmlspecialchars(decryptData($row['cashier_name']) ?? 'N/A')?> </td>
+        <td><?= htmlspecialchars($row['location']) ?></td>
+        <td><?= $row['sale_date'] ?></td>
+
+    </tr>
+    <?php endforeach; ?>
+
+    
+    <tr style="font-weight:bold;">
+        <td colspan="5">Grand Total</td>
+        <td>₱<?= number_format($grand_total, 2) ?></td>
+        <td colspan="4"></td>
+    </tr>
+<?php else: ?>
+    <tr>
+        <td colspan="10">No sales data found</td>
+    </tr>
+<?php endif; ?>
+
+
         </tbody>
     </table>
 </div>

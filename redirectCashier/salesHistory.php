@@ -1,7 +1,6 @@
 <?php
-session_start();
+require_once '../session.php';
 include '../DBconnect.php';
-
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'cashier') {
     header("Location: ../roleLogin/login.php");
@@ -9,43 +8,62 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'cashier') {
 }
 
 $cashier_id = $_SESSION['user_id'];
-
-//filter
 $from = $_GET['from'] ?? date('Y-m-d');
 $to   = $_GET['to']   ?? date('Y-m-d');
 
-// sale
-$sql = "
+// Fetch all orders for this cashier in date range
+$stmt = $conn->prepare("
     SELECT 
+        o.order_id,
+        o.order_date,
+        o.order_time,
+        o.total_amount,
         s.sale_id,
         p.product_name,
         p.size,
         s.quantity,
         s.subtotal,
-        s.sale_date,
-        s.sale_time,
-        IFNULL(GROUP_CONCAT(t.topping_name SEPARATOR ', '), '') AS toppings
-    FROM sales s
+        IFNULL(GROUP_CONCAT(
+            CONCAT(t.topping_name, ' x', st.quantity)
+            ORDER BY t.topping_name
+            SEPARATOR ', '
+        ), '') AS toppings
+    FROM orders o
+    JOIN sales s ON s.order_id = o.order_id
     JOIN products p ON s.product_id = p.product_id
     LEFT JOIN sale_toppings st ON s.sale_id = st.sale_id
     LEFT JOIN toppings t ON st.topping_id = t.topping_id
-    WHERE s.cashier_id = ?
-      AND s.sale_date BETWEEN ? AND ?
-    GROUP BY s.sale_id, p.product_name, p.size, s.quantity, s.subtotal, s.sale_date, s.sale_time
-    ORDER BY s.sale_date DESC, s.sale_time DESC
-";
-
-
-$stmt = $conn->prepare($sql);
+    WHERE o.cashier_id = ?
+      AND o.order_date BETWEEN ? AND ?
+    GROUP BY o.order_id, s.sale_id
+    ORDER BY o.order_date DESC, o.order_time DESC
+");
 $stmt->bind_param("iss", $cashier_id, $from, $to);
 $stmt->execute();
-$sales = $stmt->get_result();
+$result = $stmt->get_result();
 
-//total sale
-$total_sales = 0;
-while ($row = $sales->fetch_assoc()) {
-    $total_sales += $row['subtotal'];
-    $rows[] = $row;
+// Group rows by order_id
+$orders = [];
+$grand_total = 0;
+while ($row = $result->fetch_assoc()) {
+    $oid = $row['order_id'];
+    if (!isset($orders[$oid])) {
+        $orders[$oid] = [
+            'order_id'    => $oid,
+            'order_date'  => $row['order_date'],
+            'order_time'  => $row['order_time'],
+            'total_amount'=> $row['total_amount'],
+            'items'       => []
+        ];
+        $grand_total += $row['total_amount'];
+    }
+    $orders[$oid]['items'][] = [
+        'product_name' => $row['product_name'],
+        'size'         => $row['size'],
+        'quantity'     => $row['quantity'],
+        'subtotal'     => $row['subtotal'],
+        'toppings'     => $row['toppings'],
+    ];
 }
 ?>
 <!DOCTYPE html>
@@ -54,32 +72,38 @@ while ($row = $sales->fetch_assoc()) {
     <title>Sales History</title>
     <link rel="stylesheet" href="../Design/forCashierSaleHistory.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .order-group { margin-bottom: 18px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+        .order-group-header { background: #0ea5e9; color: #fff; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.95rem; }
+        .order-group-header .order-meta { display: flex; gap: 18px; align-items: center; }
+        .order-group-header .order-total { font-size: 1.05rem; }
+        .order-group table { width: 100%; border-collapse: collapse; background: #fff; }
+        .order-group table th { background: #f0f9ff; color: #0369a1; font-size: 0.82rem; padding: 8px 14px; text-align: left; }
+        .order-group table td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        .order-group table tr:last-child td { border-bottom: none; }
+        .topping-text { color: #e91e8c; font-style: italic; font-size: 0.82rem; }
+        .no-orders { text-align: center; padding: 40px; color: #94a3b8; }
+        .order-num { background: rgba(255,255,255,0.25); border-radius: 20px; padding: 2px 10px; font-size: 0.82rem; }
+    </style>
 </head>
 <body>
 <header class="header">
-        <div class="header-container">
-            <div class="header-content">
-                <div class="header-left">
-                    <a href="cashierDashboard.php" class="back-btn">
-                        <i class="fas fa-arrow-left"></i>
-                    </a>
-                    <div class="header-title">
-                        <h1>
-                            <i class="fas fa-clipboard-list"></i>
-                            Sales History
-                        </h1>
-                        <p></p>
-                    </div>
-                </div>
-                <div class="header-right">
+    <div class="header-container">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="cashierDashboard.php" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-title">
+                    <h1><i class="fas fa-clipboard-list"></i> Sales History</h1>
                     <p></p>
-                    <p class="admin-name"></p>
                 </div>
             </div>
         </div>
-    </header>
+    </div>
+</header>
 
-    <div class="container">
+<div class="container">
     <div class="filter-section">
         <div class="filter-header">
             <div class="filter-title">
@@ -87,59 +111,77 @@ while ($row = $sales->fetch_assoc()) {
                 <h2>Filter Records</h2>
             </div>
         </div>
-
-<form method="GET" class="filter-form">
-    <div class="filter-grid">
-        <div class="filter-field">
-    <label>From:</label>
-    <input type="date" name="from" value="<?= $from ?>">
-</div>
-      <div class="filter-field">
-    <label>To:</label>
-    <input type="date" name="to" value="<?= $to ?>">
-</div>
-</div>
-    <div class="filter-actions">
-    <button type="submit" class="btn btn-filter"><i class="fa-solid fa-magnifying-glass"></i>Filter</button>
-</div>
-</form>
-</div>
-
-
-<table>
-    <tr>
-        <th><i class="fa-solid fa-calendar-days"></i>Date</th>
-        <th><i class="fa-solid fa-clock"></i>Time</th>
-        <th><i class="fa-solid fa-ice-cream"></i>Product</th>
-        <th><i class="fa-solid fa-bowl-food"></i>Toppings</th>
-        <th><i class="fa-solid fa-ruler"></i>Size</th>
-        <th><i class="fa-solid fa-hashtag"></i>Qty</th>
-        <th><i class="fa-solid fa-money-bill-wave"></i>Subtotal</th>
-    </tr>
-
-    <?php if (!empty($rows)): ?>
-        <?php foreach ($rows as $row): ?>
-        <tr>
-            <td><?= $row['sale_date'] ?></td>
-            <td><?= date("h:i A", strtotime($row['sale_time'])) ?></td>
-            <td><?= $row['product_name'] ?></td>
-            <td><?= $row['toppings'] ?? '-' ?></td>
-            <td><?= $row['size'] ?></td>
-            <td><?= $row['quantity'] ?></td>
-            <td>₱<?= number_format($row['subtotal'], 2) ?></td>
-        </tr>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <tr>
-            <td colspan="6">No sales found</td>
-        </tr>
-    <?php endif; ?>
-</table>
-
-<div class="total">
-    💰 Total Sales: ₱<?= number_format($total_sales, 2) ?>
-</div>
+        <form method="GET" class="filter-form">
+            <div class="filter-grid">
+                <div class="filter-field">
+                    <label>From:</label>
+                    <input type="date" name="from" value="<?= $from ?>">
+                </div>
+                <div class="filter-field">
+                    <label>To:</label>
+                    <input type="date" name="to" value="<?= $to ?>">
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-filter">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+            </div>
+        </form>
     </div>
 
+    <?php if (empty($orders)): ?>
+        <div class="no-orders">
+            <i class="fas fa-receipt" style="font-size:2.5rem;margin-bottom:10px;display:block;"></i>
+            No orders found for this date range.
+        </div>
+    <?php else: ?>
+        <?php $order_num = count($orders); ?>
+        <?php foreach ($orders as $order): ?>
+            <div class="order-group">
+                <div class="order-group-header">
+                    <div class="order-meta">
+                        <span><i class="fas fa-receipt" style="margin-right:6px;"></i>Order #<?= $order['order_id'] ?></span>
+                        <span><i class="fas fa-calendar" style="margin-right:4px;"></i><?= date('M d, Y', strtotime($order['order_date'])) ?></span>
+                        <span><i class="fas fa-clock" style="margin-right:4px;"></i><?= date('h:i A', strtotime($order['order_time'])) ?></span>
+                    </div>
+                    <span class="order-total">₱<?= number_format($order['total_amount'], 2) ?></span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-ice-cream"></i> Product</th>
+                            <th><i class="fas fa-ruler"></i> Size</th>
+                            <th><i class="fas fa-bowl-food"></i> Toppings</th>
+                            <th><i class="fas fa-hashtag"></i> Qty</th>
+                            <th><i class="fas fa-money-bill-wave"></i> Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($order['items'] as $item): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($item['product_name']) ?></td>
+                                <td><?= htmlspecialchars($item['size']) ?></td>
+                                <td>
+                                    <?php if ($item['toppings']): ?>
+                                        <span class="topping-text"><?= htmlspecialchars($item['toppings']) ?></span>
+                                    <?php else: ?>
+                                        <span style="color:#cbd5e1;">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= $item['quantity'] ?></td>
+                                <td>₱<?= number_format($item['subtotal'], 2) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <div class="total">
+        💰 Total Sales: ₱<?= number_format($grand_total, 2) ?>
+    </div>
+</div>
 </body>
 </html>

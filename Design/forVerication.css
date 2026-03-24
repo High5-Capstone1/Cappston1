@@ -1,0 +1,399 @@
+   :root {
+            --sky-50:  #f0f9ff;
+            --sky-100: #e0f2fe;
+            --sky-200: #bae6fd;
+            --sky-300: #7dd3fc;
+            --sky-400: #38bdf8;
+            --sky-500: #0ea5e9;
+            --sky-600: #0284c7;
+            --sky-700: #0369a1;
+            --sky-800: #075985;
+            --white:   #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100:#f1f5f9;
+            --gray-200:#e2e8f0;
+            --gray-400:#94a3b8;
+            --gray-500:#64748b;
+            --gray-700:#334155;
+            --gray-900:#0f172a;
+            --green:   #10b981;
+            --red:     #ef4444;
+            --red-light: #fef2f2;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #ddf0fc;
+            min-height: 100vh;
+        }
+
+        /* ── Top Nav ── */
+        .topbar {
+            background: linear-gradient(90deg, var(--sky-700), var(--sky-500));
+            padding: 0 28px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(3,105,161,0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .back-btn {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: var(--white);
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.28); }
+        .topbar-title {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .topbar-title img { width: 34px; }
+        .topbar-title h1 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: 0.3px;
+        }
+        .topbar-title span {
+            font-size: 0.78rem;
+            color: var(--sky-200);
+            font-weight: 500;
+        }
+        .topbar-right {
+            font-size: 0.82rem;
+            color: var(--sky-100);
+            font-weight: 600;
+            text-align: right;
+        }
+        .topbar-right small { display: block; color: var(--sky-200); font-weight: 400; font-size: 0.72rem; }
+
+        /* ── Page Layout ── */
+        .page-wrapper {
+            max-width: 860px;
+            margin: 36px auto;
+            padding: 0 20px 60px;
+        }
+
+        .page-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .page-heading-icon {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--sky-600), var(--sky-400));
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(14,165,233,0.35);
+        }
+        .page-heading h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--sky-800);
+        }
+        .page-heading p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: 1px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--white);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(3,105,161,0.10);
+            border: 1px solid var(--sky-100);
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            background: linear-gradient(90deg, var(--sky-50), var(--white));
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--sky-100);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-header i { color: var(--sky-500); font-size: 0.95rem; }
+        .card-header h3 {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--sky-700);
+        }
+        .item-count {
+            margin-left: auto;
+            background: var(--sky-100);
+            color: var(--sky-700);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* ── Order Items Table ── */
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .order-table thead tr {
+            background: var(--sky-50);
+        }
+        .order-table thead th {
+            padding: 12px 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gray-500);
+            text-align: left;
+        }
+        .order-table thead th:last-child { text-align: right; }
+        .order-table thead th.th-center { text-align: center; }
+
+        .order-table tbody tr.item-row {
+            border-top: 1px solid var(--sky-100);
+            transition: background 0.15s;
+        }
+        .order-table tbody tr.item-row:hover { background: var(--sky-50); }
+
+        .order-table td {
+            padding: 14px 20px;
+            vertical-align: middle;
+        }
+
+        .product-cell { display: flex; align-items: center; gap: 12px; }
+        .product-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--sky-100), var(--sky-200));
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--sky-600);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .product-name {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        .product-size {
+            font-size: 0.74rem;
+            color: var(--gray-400);
+            margin-top: 2px;
+        }
+
+        .qty-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 28px;
+            background: var(--sky-100);
+            color: var(--sky-700);
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            padding: 0 8px;
+        }
+
+        .price-cell {
+            text-align: right;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--sky-700);
+        }
+
+        .action-cell { text-align: right; }
+        .remove-btn {
+            background: var(--red-light);
+            color: var(--red);
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        .remove-btn:hover {
+            background: var(--red);
+            color: white;
+            border-color: var(--red);
+            transform: translateY(-1px);
+        }
+
+        /* Toppings row */
+        .order-table tbody tr.topping-row td {
+            padding: 4px 20px 4px 72px;
+            background: var(--gray-50);
+        }
+        .order-table tbody tr.topping-row:last-of-type {
+            padding-bottom: 10px;
+        }
+        .topping-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--sky-50);
+            border: 1px solid var(--sky-200);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 0.75rem;
+            color: var(--sky-700);
+            font-weight: 600;
+        }
+        .topping-pill i { font-size: 0.6rem; color: var(--sky-400); }
+        .topping-price {
+            text-align: right;
+            font-size: 0.78rem;
+            color: var(--gray-500);
+            font-weight: 600;
+        }
+
+        /* ── Summary Card ── */
+        .summary-card {
+            background: var(--white);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(3,105,161,0.10);
+            border: 1px solid var(--sky-100);
+        }
+        .summary-body {
+            padding: 24px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 0.88rem;
+        }
+        .summary-row .label { color: var(--gray-500); font-weight: 600; }
+        .summary-row .value { color: var(--gray-700); font-weight: 700; }
+        .summary-divider {
+            border: none;
+            border-top: 2px dashed var(--sky-100);
+            margin: 12px 0;
+        }
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--sky-700), var(--sky-500));
+            margin: 0 -24px -24px;
+            padding: 20px 24px;
+        }
+        .summary-total .total-label {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--white);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .summary-total .total-amount {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #4ade80;
+            letter-spacing: -0.5px;
+        }
+
+        /* ── Empty State ── */
+        .empty-state {
+            padding: 60px 24px;
+            text-align: center;
+        }
+        .empty-icon {
+            font-size: 3rem;
+            color: var(--sky-200);
+            margin-bottom: 12px;
+        }
+        .empty-state h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--gray-500);
+            margin-bottom: 6px;
+        }
+        .empty-state p { font-size: 0.82rem; color: var(--gray-400); }
+
+        /* ── Action Buttons ── */
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn {
+            flex: 1;
+            padding: 15px 24px;
+            border-radius: 14px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary {
+            background: var(--white);
+            color: var(--sky-600);
+            border: 2px solid var(--sky-200);
+        }
+        .btn-secondary:hover {
+            background: var(--sky-50);
+            border-color: var(--sky-400);
+            transform: translateY(-2px);
+        }
+        .btn-confirm {
+            background: linear-gradient(135deg, var(--sky-600), var(--sky-400));
+            color: var(--white);
+            box-shadow: 0 4px 16px rgba(14,165,233,0.4);
+        }
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, var(--sky-700), var(--sky-500));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(14,165,233,0.45);
+        }
+        .btn-confirm:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Stagger animation */
+        .card, .summary-card, .actions {
+            animation: fadeUp 0.4s ease both;
+        }
+        .card { animation-delay: 0.05s; }
+        .summary-card { animation-delay: 0.15s; }
+        .actions { animation-delay: 0.22s; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }

@@ -1,6 +1,20 @@
 <?php
-session_start();
+require_once '../session.php';
 include '../DBconnect.php';
+
+define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
+define('ENCRYPTION_METHOD', 'AES-256-CBC');
+
+function decryptData($data)
+{
+    if (empty($data)) return $data;
+    $data = base64_decode($data);
+    $parts = explode('::', $data, 2);
+    if (count($parts) !== 2) return $data; 
+    list($iv, $encrypted) = $parts;
+    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
+
 
 if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['cashier','staff'])) {
     header("Location: roleLogin/login.php");
@@ -104,7 +118,7 @@ $history = $stmt->get_result();
                     <div class="header-title">
                         <h1>
                             <i class="fas fa-clock"></i>
-                            Attendance System
+                            Staff Attendance 
                         </h1>
                         <p>Track your work hours</p>
                     </div>
@@ -229,7 +243,6 @@ $history = $stmt->get_result();
                 </div>
             </div>
 
-            <!--attendance history -->
             <div class="history-section">
                 <div class="history-card">
                     <div class="history-header">
@@ -272,7 +285,7 @@ $history = $stmt->get_result();
                                             </span>
                                         </td>
                                         <td>
-                                            <span><?= htmlspecialchars($row['name']) ?></span>
+                                           <span><?= htmlspecialchars(decryptData($row['name'])) ?></span>
                                         </td>
                                         <td>
                                             <?php if ($row['time_in']): ?>
@@ -330,7 +343,6 @@ $history = $stmt->get_result();
             };
             document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-US', options);
         }
-        
         updateTime();
         setInterval(updateTime, 1000);
     </script>

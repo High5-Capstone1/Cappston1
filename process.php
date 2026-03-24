@@ -1,42 +1,75 @@
-
 <?php
-session_start();
+require_once 'session.php';
 include 'DBconnect.php';
 
+define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
+define('ENCRYPTION_METHOD', 'AES-256-CBC');
 
-$username = $_POST['username'];
-$password = $_POST['password'];
+function decryptData($data) {
+    if (empty($data)) return $data;
+    $data = base64_decode($data);
+    $parts = explode('::', $data, 2);
+    if (count($parts) !== 2) return $data;
+    list($iv, $encrypted) = $parts;
+    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+}
 
-$sql = "SELECT * FROM users WHERE username = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: login.php");
+    exit();
+}
+$inputUsername = $_POST['username'];
+$password      = $_POST['password'];
+$source        = $_POST['login_source'] ?? 'staff';
 
-if ($result->num_rows === 1) {
-    $user = $result->fetch_assoc();
 
+$sql    = "SELECT * FROM users";
+$result = $conn->query($sql);
 
-    if (password_verify($password, $user['password'])) {
+$user = null;
+while ($row = $result->fetch_assoc()) {
+    $decryptedUsername = decryptData($row['username']);
+    $decryptedEmail    = decryptData($row['email']);
 
-        
-        $_SESSION['user_id'] = $user['user_id'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['store_id'] = $user['store_id'];
-
-        if ($user['role'] === 'admin') {
-            header("Location: redirectAdmin/adminDashboard.php");
-        } elseif ($user['role'] === 'cashier') {
-            header("Location: redirectCashier/cashierDashboard.php");
-        } else {
-            header("Location: redirectStaff/staffDashboard.php");
-        }
-        exit();
-
-    } else {
-        echo "Wrong username or password!";
+    if ($decryptedUsername === $inputUsername || $decryptedEmail === $inputUsername) {
+        $user = $row;
+        break;
     }
+}
+if ($user && password_verify($password, $user['password'])) {
+
+    $role = decryptData($user['role']);
+
+    if ($role === 'admin' && $source !== 'admin') {
+        $_SESSION['error'] = "Access denied. Please use the Admin login page.";
+        header("Location: roleLogin/login.php");
+        exit();
+    }
+
+    $_SESSION['user_id']  = $user['user_id'];
+    $_SESSION['role']     = $role;
+    $_SESSION['store_id'] = $user['store_id'];
+    $_SESSION['username'] = decryptData($user['username']);
+    $_SESSION['name']     = decryptData($user['name']);
+
+    session_regenerate_id(true);
+
+    if ($role === 'admin') {
+        header("Location: redirectAdmin/adminDashboard.php");
+    } elseif ($role === 'cashier') {
+        header("Location: redirectCashier/cashierDashboard.php");
+    } else {
+        header("Location: redirectStaff/staffDashboard.php");
+    }
+    exit();
+
 } else {
-    echo "User not found!";
+    $_SESSION['error'] = "Invalid username or password.";
+    if ($source === 'admin') {
+        header("Location: roleLogin/adminLogin.php");
+    } else {
+        header("Location: roleLogin/login.php");
+    }
+    exit();
 }
 ?>
