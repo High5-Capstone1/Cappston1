@@ -10,7 +10,34 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-<div class="decoration"></div>
+    <!-- ===== BACKGROUND DECORATIONS ===== -->
+    <!-- Large transparent circles -->
+    <div class="bg-circle bg-circle-1"></div>
+    <div class="bg-circle bg-circle-2"></div>
+    <div class="bg-circle bg-circle-3"></div>
+
+    <!-- Thin diagonal lines -->
+    <div class="bg-line bg-line-1"></div>
+    <div class="bg-line bg-line-2"></div>
+    <div class="bg-line bg-line-3"></div>
+
+    <!-- Small dots pattern -->
+    <div class="bg-dot bg-dot-1"></div>
+    <div class="bg-dot bg-dot-2"></div>
+    <div class="bg-dot bg-dot-3"></div>
+    <div class="bg-dot bg-dot-4"></div>
+    <div class="bg-dot bg-dot-5"></div>
+    <div class="bg-dot bg-dot-6"></div>
+
+    <!-- Subtle glowing effects -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Decorative rings -->
+    <div class="bg-ring bg-ring-1"></div>
+    <div class="bg-ring bg-ring-2"></div>
+    <!-- ============================== -->
 
 <div class="container forgot-card">
 
