@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $message_type = "success";
 }
 
-// Fetch ALL records with no role filter in SQL (we'll filter in PHP since role is encrypted)
+// fetch all no role
 $sql = "
     SELECT a.attendance_id, a.date, a.time_in, a.time_out, a.role AS stored_role,
            u.name, u.role AS user_role, a.store_id, s.location
@@ -78,16 +78,11 @@ if (!empty($params)) {
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Fetch all rows and decrypt, then apply role filter in PHP
+//fetch all rows and decrypt, then apply role filter in PHP
 $rows = [];
 while ($row = $result->fetch_assoc()) {
     $row['decrypted_name'] = decryptData($row['name']) ?? 'N/A';
     $row['decrypted_role'] = decryptData($row['user_role']) ?? 'N/A';
-
-    // Apply role filter in PHP after decrypting
-    if (!empty($filter_role) && strtolower($row['decrypted_role']) !== strtolower($filter_role)) {
-        continue;
-    }
 
     $rows[] = $row;
 }
@@ -202,17 +197,7 @@ $total_records = count($rows);
                         </label>
                         <input type="date" name="end_date" value="<?= htmlspecialchars($filter_end) ?>">
                     </div>
-                    <div class="filter-field">
-                        <label>
-                            <i class="fas fa-user-tag"></i>
-                            Role
-                        </label>
-                        <select name="role">
-                            <option value="">All Roles</option>
-                            <option value="cashier" <?= $filter_role=='cashier'?'selected':'' ?>>Cashier</option>
-                            <option value="staff" <?= $filter_role=='staff'?'selected':'' ?>>Staff</option>
-                        </select>
-                    </div>
+                    
                     <div class="filter-field">
                         <label>
                             <i class="fas fa-store"></i>
@@ -251,7 +236,6 @@ $total_records = count($rows);
                         <tr>
                             <th><i class="fas fa-calendar"></i> Date</th>
                             <th><i class="fas fa-user"></i> Full Name</th>
-                            <th><i class="fas fa-id-badge"></i> Role</th>
                             <th><i class="fas fa-store"></i> Store ID</th>
                             <th><i class="fas fa-map-marker-alt"></i> Location</th>
                             <th><i class="fas fa-sign-in-alt"></i> Time In</th>
@@ -276,11 +260,7 @@ $total_records = count($rows);
                                         <span><?= htmlspecialchars($row['decrypted_name']) ?></span>
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="role-badge <?= strtolower($row['decrypted_role']) ?>">
-                                        <?= ucfirst($row['decrypted_role']) ?>
-                                    </span>
-                                </td>
+                              
                                 <td>
                                     <span class="store-badge">
                                         Store #<?= $row['store_id'] ?>
@@ -324,7 +304,7 @@ $total_records = count($rows);
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8">
+                                <td colspan="7">
                                     <div class="empty-state">
                                         <i class="fas fa-inbox"></i>
                                         <p>No attendance records found</p>

@@ -15,9 +15,7 @@ require_once '../session.php';
 </head>
 
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-
     <div class="decoration"></div>
-
     <div class="container">
 
         <div class="header">
@@ -26,7 +24,6 @@ require_once '../session.php';
             <p class="sub">Signature Creations</p>
         </div>
         <form action="../process.php" method="POST">
-
             <div class="form">
                 <label>Username or Email</label>
                 <div class="input">
@@ -53,19 +50,16 @@ require_once '../session.php';
                 </div>
             </div>
 
-            <div class="options">
-               
-
-                <a href="forgot_password.php" style="color:#e91e25; font-size:13px; text-decoration:none;">
-                    Forgot Password?
-                    </a>
-            </div>
+                <div class="options">
+                    <a href="forgot_password.php" style="color:#e91e25; font-size:13px; text-decoration:none;">
+                        Forgot Password?
+                        </a>
+                </div>
 
             <button type="submit">Login</button>
 
         </form>
     </div>
-
     <?php if (isset($_SESSION['error'])): ?>
         <script>
             Swal.fire({

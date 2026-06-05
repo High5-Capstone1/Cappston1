@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message_type = "info";
     }
     
-    // Refresh attendance data
+    //refresh attendance data
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("is", $user_id, $today);
     $stmt->execute();

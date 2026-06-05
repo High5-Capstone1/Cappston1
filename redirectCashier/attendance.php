@@ -18,7 +18,6 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['cashier','staff'
     header("Location: roleLogin/login.php");
     exit();
 }
-
 $user_id  = $_SESSION['user_id'];
 $store_id = $_SESSION['store_id'];
 $role     = $_SESSION['role'];
@@ -31,8 +30,6 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("is", $user_id, $today);
 $stmt->execute();
 $todayAttendance = $stmt->get_result()->fetch_assoc();
-
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // time in
@@ -51,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
    
     } elseif (isset($_POST['time_out_btn']) && $todayAttendance && empty($todayAttendance['time_out'])) {
-
         $time_out = date('H:i:s'); 
 
         
@@ -72,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "Attendance already completed for today";
         $message_type = "info";
     }
-    
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("is", $user_id, $today);
     $stmt->execute();
@@ -101,8 +96,6 @@ $history = $stmt->get_result();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-
-
     <header class="header">
         <div class="header-container">
             <div class="header-content">
@@ -125,9 +118,7 @@ $history = $stmt->get_result();
             </div>
         </div>
     </header>
-
-    <div class="container">
-        
+    <div class="container">        
         <?php if(isset($message)): ?>
         <div class="message <?= $message_type ?>">
             <i class="fas <?= $message_type === 'success' ? 'fa-check-circle' : ($message_type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle') ?>"></i>
@@ -139,8 +130,6 @@ $history = $stmt->get_result();
        
             <div class="clock-section">
                 <div class="clock-card">
-                    
-                  
                     <div class="date-time-section">
                         <div class="calendar-icon">
                             <i class="fas fa-calendar-day"></i>
@@ -152,7 +141,6 @@ $history = $stmt->get_result();
                         </div>
                     </div>                
                     <?php if (!$todayAttendance): ?>
-                    
                         <form method="POST" class="action-form">
                             <div class="status-info">
                                 <div class="status-badge">
@@ -165,9 +153,7 @@ $history = $stmt->get_result();
                                 Time In Now
                             </button>
                         </form>
-
                     <?php elseif ($todayAttendance && empty($todayAttendance['time_out'])): ?>
-                        
                         <div class="clocked-in-status">
                             <div class="clocked-in-header">
                                 <i class="fas fa-check-circle"></i>
@@ -180,19 +166,16 @@ $history = $stmt->get_result();
                       <span class="late-badge">Late</span>
                         <?php else: ?>
                         <span class="on-time-badge">On-Time</span>
-    <?php endif; ?>
-</p>
+                     <?php endif; ?>
+                        </p>
                         </div>
-                        
                         <form method="POST">
                             <button type="submit" name="time_out_btn" class="btn btn-clock-out">
                                 <i class="fas fa-sign-out-alt"></i>
                                 Time Out Now
                             </button>
                         </form>
-
-                    <?php else: ?>
-                   
+                    <?php else: ?>                 
                         <div class="completed-status">
                             <div class="completed-icon">
                                 <i class="fas fa-check"></i>
@@ -244,7 +227,6 @@ $history = $stmt->get_result();
                     </div>
                 </div>
             </div>
-
             <div class="history-section">
                 <div class="history-card">
                     <div class="history-header">
@@ -258,7 +240,6 @@ $history = $stmt->get_result();
                             Last 10 Records
                         </span>
                     </div>
-
                     <div class="table-container">
                         <table>
                             <thead>
@@ -345,7 +326,6 @@ $history = $stmt->get_result();
             };
             document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-US', options);
         }
-        
         updateTime();
         setInterval(updateTime, 1000);
     </script>

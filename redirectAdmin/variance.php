@@ -15,7 +15,7 @@ $date_to   = $_GET['date_to']   ?? date('Y-m-d');
 $stores = $conn->query("SELECT store_id, store_name, location FROM store ORDER BY store_id")
                ->fetch_all(MYSQLI_ASSOC);
 
-//Build variance data for every store
+//build variance data for every store
 $all_store_data    = [];
 $grand_consumed    = 0;
 $grand_sales       = 0;
@@ -31,14 +31,13 @@ foreach ($stores as $store) {
     $inv_map = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'quantity', 'item_id');
 
     //Approved stock sent to this store in date range
-    $stmt = $conn->prepare("
-        SELECT item_id, SUM(requested_qty) AS total_approved
-        FROM stock_requests
-        WHERE store_id = ? AND status = 'approved'
-          AND DATE(created_at) BETWEEN ? AND ?
-        GROUP BY item_id
-    ");
-    $stmt->bind_param("iss", $sid, $date_from, $date_to);
+   $stmt = $conn->prepare("
+    SELECT item_id, SUM(requested_qty) AS total_approved
+    FROM stock_requests
+    WHERE store_id = ? AND status = 'approved'
+    GROUP BY item_id
+");
+$stmt->bind_param("i", $sid);
     $stmt->execute();
     $approved_map = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total_approved', 'item_id');
 
@@ -127,6 +126,7 @@ foreach ($stores as $store) {
     <title>Variance – Mr. Softy Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../Design/forAdminVariance.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -157,7 +157,6 @@ foreach ($stores as $store) {
             <p>Approved stock sent vs actual inventory vs sales consumed — every store at a glance</p>
         </div>
     </div>
-
     
     <form method="GET" class="filter-bar">
         <label><i class="fas fa-calendar" style="margin-right:4px"></i>From</label>
@@ -170,7 +169,6 @@ foreach ($stores as $store) {
             Showing all <?= count($stores) ?> stores (including no-stock stores)
         </span>
     </form>
-
     
     <div class="stats-grid">
         <div class="stat-card" style="animation-delay:.05s">
@@ -200,7 +198,7 @@ foreach ($stores as $store) {
         <div class="legend-item"><div class="legend-dot" style="background:var(--gray-400)"></div>No Stock Sent Yet</div>
     </div>
 
-    //Per-Store Sections
+   
     <?php if (empty($all_store_data)): ?>
     <div class="no-stores">
         <i class="fas fa-box-open"></i>

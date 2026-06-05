@@ -9,7 +9,6 @@
 <body>
 
 <div class="container">
-
     <div class="logo-section">
         <div class="logo-icon">
             <img src="img/mrsofty2.png" alt="mrsofty" width="120px" height="120px">

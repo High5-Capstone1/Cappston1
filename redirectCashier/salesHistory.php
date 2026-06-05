@@ -11,7 +11,6 @@ $cashier_id = $_SESSION['user_id'];
 $from = $_GET['from'] ?? date('Y-m-d');
 $to   = $_GET['to']   ?? date('Y-m-d');
 
-// Fetch all orders for this cashier in date range
 $stmt = $conn->prepare("
     SELECT 
         o.order_id,
@@ -42,7 +41,6 @@ $stmt->bind_param("iss", $cashier_id, $from, $to);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Group rows by order_id
 $orders = [];
 $grand_total = 0;
 while ($row = $result->fetch_assoc()) {

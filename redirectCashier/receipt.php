@@ -121,10 +121,19 @@ $receipt_no  = strtoupper(substr(md5(uniqid()), 0, 8));
                                     <div class="item-name"><?= htmlspecialchars($sale['product_name']) ?></div>
 
                                 </div>
-                                <div class="item-qty-price">
-                                    <div class="item-price">₱<?= number_format($sale['subtotal'], 2) ?></div>
-                                    <div class="item-qty">x<?= $sale['quantity'] ?></div>
-                                </div>
+                               <?php
+    $topping_total = 0;
+    if (!empty($sale_toppings[$sale['sale_id']])) {
+        foreach ($sale_toppings[$sale['sale_id']] as $t) {
+            $topping_total += $t['topping_price'] * $t['quantity'];
+        }
+    }
+    $product_only_price = $sale['subtotal'] - $topping_total;
+?>
+<div class="item-qty-price">
+    <div class="item-price">₱<?= number_format($product_only_price, 2) ?></div>
+    <div class="item-qty">x<?= $sale['quantity'] ?></div>
+</div>
                             </div>
 
                             <?php if (!empty($sale_toppings[$sale['sale_id']])): ?>

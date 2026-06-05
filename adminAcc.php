@@ -9,7 +9,6 @@ function encryptData($data) {
     $encrypted = openssl_encrypt($data, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
     return base64_encode($iv . '::' . $encrypted);
 }
-
 $conn->query("DELETE FROM users WHERE role LIKE '%admin%' OR username LIKE '%Admin%'");
 echo "Deleted old admins. Rows affected: " . $conn->affected_rows . "<br>"; 
 

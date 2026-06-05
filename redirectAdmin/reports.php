@@ -4,8 +4,8 @@ session_set_cookie_params(28800);
 
 include  '../DBconnect.php';
 
-
 date_default_timezone_set('Asia/Manila');
+//date default
 $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
 $endDate   = $_GET['end_date'] ?? date('Y-m-d');
 
@@ -13,7 +13,6 @@ if (empty($startDate) || empty($endDate)) {
     $startDate = date('Y-m-d', strtotime('-30 days'));
     $endDate   = date('Y-m-d');
 }
-
 
 $daysRange = (strtotime($endDate) - strtotime($startDate)) / 86400;
 $MAX_DAYS = 366;
@@ -32,7 +31,6 @@ if ($daysRange <= 31) {
     $salesDateFormat = "%Y";
 }
 
-
 $selectedLocation = isset($_GET['location']) ? $_GET['location'] : 'all';
 
 $locationFilter = "";
@@ -40,7 +38,9 @@ if ($selectedLocation != 'all') {
     $locationFilter = " AND location = '" . mysqli_real_escape_string($conn, $selectedLocation) . "'";
 }
 
-$queryLocations = "SELECT DISTINCT location FROM attendance_summary ORDER BY location";
+
+//shows all stores 
+$queryLocations = "SELECT DISTINCT location FROM store ORDER BY location";
 $resultLocations = mysqli_query($conn, $queryLocations);
 $locations = [];
 while ($row = mysqli_fetch_assoc($resultLocations)) {
@@ -64,7 +64,6 @@ while ($row = mysqli_fetch_assoc($resultAttendanceOverTime)) {
     $attendanceOverTimeData[] = $row;
 }
 
-
 $queryTodayStats = "
     SELECT 
         COUNT(*) as total_attendance,
@@ -77,6 +76,7 @@ $queryTodayStats = "
 $resultTodayStats = mysqli_query($conn, $queryTodayStats);
 $todayStats = mysqli_fetch_assoc($resultTodayStats);
 
+//month late stats
 $queryMonthStats = "
     SELECT 
         COUNT(*) as total_attendance,
@@ -130,8 +130,6 @@ if (count($salesOverTimeData) > 120) {
     $salesOverTimeData = array_slice($salesOverTimeData, -120);
 }
 
-
-
 $queryProductQuantity = "
     SELECT 
         p.product_name,
@@ -167,7 +165,6 @@ $queryTodaySales = "
 ";
 $resultTodaySales = mysqli_query($conn, $queryTodaySales);
 $todaySales = mysqli_fetch_assoc($resultTodaySales);
-
 
 $queryMonthSales = "
     SELECT 
@@ -232,9 +229,9 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
                 <span>Insights</span>
             </a>
         </nav>
-        <div class="sidebar-footer">
-            <a href="adminDashboard.php" class="sidebar-back-link">← Back to Admin</a>
-        </div>
+       <div class="sidebar-footer">
+    <a href="adminDashboard.php" class="sidebar-back-link" style="display: block; padding: 12px 16px; color: #fff; text-decoration: none; border-radius: 4px; background-color: #0d47a1; transition: all 0.3s ease; font-size: 14px; text-align: left; position: fixed; bottom: 20px; left: 20px; width: 140px; z-index: 100; box-sizing: border-box; border: 2px solid #1976d2; cursor: pointer;" onmouseover="this.style.backgroundColor='#1565c0'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.3)';" onmouseout="this.style.backgroundColor='#0d47a1'; this.style.boxShadow='none';">← Back to Admin</a>
+</div>
     </aside>
 
     <div class="main-wrapper">
@@ -540,6 +537,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
     <div id="chartTooltip" class="chart-tooltip hidden"></div>
 
     <script>
+    // redirect filters
     function applyFilters() {
         const location  = document.getElementById('locationFilter').value;
         const startDate = document.getElementById('startDate').value;
@@ -547,6 +545,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         window.location.href = '?location=' + location + '&start_date=' + startDate + '&end_date=' + endDate;
     }
 
+    // quick range
     function setRange(days) {
         const end   = new Date();
         const start = new Date();
@@ -568,10 +567,12 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
             now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true });
     }, 1000);
 
+    // toggle sidebar
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('open');
     }
 
+    // track scroll
     const sections = ['section-stats','section-attendance','section-sales','section-products','section-insights'];
     window.addEventListener('scroll', () => {
         let current = sections[0];
@@ -584,6 +585,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         });
     });
 
+    // animate integers
     function animateCounter(el) {
         const target = parseInt(el.dataset.target) || 0;
         const duration = 1200;
@@ -595,6 +597,8 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
             if (current >= target) clearInterval(timer);
         }, 16);
     }
+
+    // animate decimals
     function animateCounterFloat(el) {
         const target = parseFloat(el.dataset.target) || 0;
         const duration = 1400;
@@ -631,12 +635,14 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
 
     const chartRegistry = {};
 
+    //create chart
     function buildChart(id, config) {
         if (chartRegistry[id]) chartRegistry[id].destroy();
         chartRegistry[id] = new Chart(document.getElementById(id), config);
         return chartRegistry[id];
     }
 
+    //swap chart
     function switchChartType(chartId, newType, btn) {
         const chart = chartRegistry[chartId];
         if (!chart) return;
@@ -664,6 +670,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         chart.update();
     }
 
+    // toggle stacking
     function switchStackedType(mode, btn) {
         const chart = chartRegistry['lateVsOnTimeChart'];
         if (!chart) return;
@@ -674,6 +681,8 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         chart.options.scales.y.stacked = stacked;
         chart.update();
     }
+
+    //mini sparkline
     function buildSparkline(id, data, color) {
         new Chart(document.getElementById(id), {
             type: 'line',
@@ -693,6 +702,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
     buildSparkline('sparkAtt',   totalAttendance, '#0ea5e9');
     buildSparkline('sparkSales', salesAmounts,    '#10b981');
 
+    // circular percentage
     function buildDonut(id, pct, color, trackColor) {
         new Chart(document.getElementById(id), {
             type: 'doughnut',
@@ -715,10 +725,8 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
     buildDonut('donutLate',   <?php echo $lateRate; ?>,   '#f43f5e', '#fee2e2');
     buildDonut('donutOnTime', <?php echo $onTimeRate; ?>, '#0ea5e9', '#e0f2fe');
 
-    /* ═══════════════════════════════════════════
-       MAIN CHARTS
-    ═══════════════════════════════════════════ */
-    // 1. Total Attendance
+
+    //total Attendance
     buildChart('totalAttendanceChart', {
         type: 'line',
         data: {
@@ -826,6 +834,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         plugins: [ChartDataLabels]
     });
 
+    // render products
     function buildProductChart(type) {
         const isDonut = type === 'doughnut';
         buildChart('productQuantityChart', {

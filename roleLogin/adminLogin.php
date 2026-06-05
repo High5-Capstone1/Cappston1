@@ -36,17 +36,23 @@ unset($_SESSION['error']);
     <form method="POST" action="../process.php">
          <input type="hidden" name="login_source" value="admin">
         <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="off">
+            <label for="username">Email</label>
+            <input type="text" id="username" name="username" placeholder="Enter your email" required autocomplete="off">
         </div>
 
         <div class="form-group">
             <label for="password">Password</label>
             <input type="password" id="password" name="password" placeholder="Enter your password" required>
         </div>
+           <div class="options">
+                    <a href="forgot_password.php" style="color:#e91e25; font-size:13px; text-decoration:none;">
+                        Forgot Password?
+                        </a>
+                </div>
 
         <button type="submit" class="btn-login">Sign In</button>
     </form>
+
 
     <a href="../admin_index.php" class="back-link">← Back</a>
 

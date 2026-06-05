@@ -3,59 +3,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forgot Password – Mr. Softy</title>
-    <link rel="stylesheet" href="../Design/login.css">
+     <link rel="stylesheet" href="../../Design/forgotP.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+   
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body>
 
-<div class="decoration"></div>
+<div class="container">
+    <!-- Form Card -->
+    <div class="form-card">
+        <!-- Header Section Inside Card -->
+        <div class="header-section">
+            <div class="logo-wrapper">
+                <img src="../img/mrsofty1.png" alt="Mr. Softy Logo" class="brand-logo">
+            </div>
+            <h1 class="brand-title">Mr. Softy</h1>
+            <p class="card-subtitle">Reset Password</p>
+            <p class="header-description">
+                Enter your registered email address and we'll send you a link to reset your password.
+            </p>
+        </div>
 
-<div class="container forgot-card">
-
-
-    <div class="forgot-header header">
-        <img src="../img/mrsofty2.png" alt="Mr. Softy Logo" class="brand-logo" width="50">
-        <h2>Mr. Softy</h2>
-        <p class="sub">Reset Password</p>
-    </div>
-
-
-    <p class="forgot-hint">
-        Enter your registered email address and we'll send you a link to reset your password.
-    </p>
-
-
-    <div class="section-rule"><span>Email address</span></div>
-
-
-    <form id="forgotForm">
-
-        <div class="forgot-field">
-            <label for="email">Email Address</label>
-            <div class="input-row">
+        <form id="forgotForm">
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
                 <input
                     type="email"
                     id="email"
+                    class="form-input"
                     placeholder="Enter your registered email"
                     autocomplete="email"
                     required
                 >
-                <span class="icon">✉️</span>
             </div>
-        </div>
 
-        <button type="submit" id="submitBtn">Send Reset Link</button>
-
-    </form>
-
-    <div class="back-row">
-        <a href="login.php">
-            <i class="back-arrow">←</i> Back to Login
-        </a>
+            <button type="submit" id="submitBtn" class="submit-button">
+                SEND RESET LINK
+            </button>
+        </form>
     </div>
 
+    <!-- Back to Login -->
+    <a href="login.php" class="back-link">
+        <span>←</span>
+        <span>Back to Login</span>
+    </a>
 </div>
 
 <script>
@@ -67,19 +61,33 @@ document.getElementById('forgotForm').addEventListener('submit', async function(
     submitBtn.disabled    = true;
     submitBtn.textContent = 'Sending...';
 
-    await fetch('../process_forgot.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=send_reset&email=${encodeURIComponent(email)}`
-    });
+    try {
+        await fetch('../process_forgot.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=send_reset&email=${encodeURIComponent(email)}`
+        });
 
-    Swal.fire({
-        icon: 'success',
-        title: 'Check Your Email',
-        text: 'If that email is registered, a reset link has been sent. Check your inbox and spam folder.',
-        confirmButtonColor: '#e91e25'
-    }).then(() => window.location.href = 'login.php');
+        Swal.fire({
+            icon: 'success',
+            title: 'Check Your Email',
+            text: 'If that email is registered, a reset link has been sent. Check your inbox and spam folder.',
+            confirmButtonColor: '#2196F3'
+        }).then(() => {
+            window.location.href = 'login.php';
+        });
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'An error occurred. Please try again.',
+            confirmButtonColor: '#2196F3'
+        });
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'SEND RESET LINK';
+    }
 });
 </script>
+
 </body>
 </html>

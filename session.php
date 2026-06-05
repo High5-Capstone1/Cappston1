@@ -9,6 +9,5 @@ if (session_status() === PHP_SESSION_NONE) {
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
-
     session_start();
 }

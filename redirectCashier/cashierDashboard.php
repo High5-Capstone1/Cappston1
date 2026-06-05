@@ -13,7 +13,7 @@ $cashier_name = $_SESSION['username'] ?? 'Cashier';
 $user_id      = $_SESSION['user_id'] ?? 0;
 $today        = date('Y-m-d');
 
-
+// Today's sales stats
 $sales_stmt = $conn->prepare("
     SELECT COUNT(*) as total_transactions, COALESCE(SUM(subtotal), 0) as total_sales
     FROM sales
@@ -25,7 +25,7 @@ $sales_data         = $sales_stmt->get_result()->fetch_assoc();
 $total_transactions = $sales_data['total_transactions'] ?? 0;
 $total_sales        = $sales_data['total_sales'] ?? 0;
 
-//recent sales
+// Recent sales
 $recent_stmt = $conn->prepare("
     SELECT s.sale_id, s.subtotal, s.sale_date, s.sale_time
     FROM sales s
@@ -37,7 +37,7 @@ $recent_stmt->bind_param("i", $store_id);
 $recent_stmt->execute();
 $recent_sales = $recent_stmt->get_result();
 
-//low stock count
+// Low stock count
 $low_stmt = $conn->prepare("
     SELECT COUNT(*) as cnt FROM inventory
     WHERE store_id = ? AND quantity <= low_stock_level
@@ -46,7 +46,7 @@ $low_stmt->bind_param("i", $store_id);
 $low_stmt->execute();
 $low_stock_count = $low_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
 
-
+// Attendance
 $att_stmt = $conn->prepare("
     SELECT time_in, time_out FROM attendance
     WHERE user_id = ? AND DATE(time_in) = ?
@@ -57,6 +57,13 @@ $att_stmt->execute();
 $att_row     = $att_stmt->get_result()->fetch_assoc();
 $clocked_in  = !empty($att_row['time_in']);
 $clocked_out = !empty($att_row['time_out']);
+
+// Total inventory items
+$inv_total_stmt = $conn->prepare("
+    SELECT COUNT(*) as cnt FROM items WHERE status = 'active'
+");
+$inv_total_stmt->execute();
+$total_items = $inv_total_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,6 +104,12 @@ $clocked_out = !empty($att_row['time_out']);
             <a href="salesHistory.php">
                 <i class="fas fa-chart-line"></i><span>Sales History</span>
             </a>
+            <a href="inventoryCashier.php">
+                <i class="fas fa-boxes"></i><span>Inventory</span>
+            </a>
+            <a href="stockCheck.php">
+                <i class="fas fa-clipboard-check"></i><span>Stock Check</span>
+            </a>
         </nav>
 
         <div class="logout-section">
@@ -107,6 +120,7 @@ $clocked_out = !empty($att_row['time_out']);
             </form>
         </div>
     </aside>
+
     <main>
 
         <div class="welcome-card">
@@ -123,7 +137,7 @@ $clocked_out = !empty($att_row['time_out']);
             </div>
         </div>
 
-
+        <!-- Stats Cards -->
         <div class="stats-grid">
 
             <div class="stat-card">
@@ -187,6 +201,7 @@ $clocked_out = !empty($att_row['time_out']);
 
         <div class="bottom-grid">
 
+   
             <div class="panel">
                 <div class="panel-header">
                     <div class="ph-icon si-blue"><i class="fas fa-bolt"></i></div>
@@ -217,8 +232,25 @@ $clocked_out = !empty($att_row['time_out']);
                         </div>
                         <i class="fas fa-chevron-right qa-arrow"></i>
                     </a>
+                    <a href="inventoryCashier.php" class="qa-row">
+                        <div class="qa-icon si-green"><i class="fas fa-boxes"></i></div>
+                        <div class="qa-text">
+                            <strong>Manage Inventory</strong>
+                            <span>Request stock replenishment</span>
+                        </div>
+                        <i class="fas fa-chevron-right qa-arrow"></i>
+                    </a>
+                    <a href="stockCheck.php" class="qa-row">
+                        <div class="qa-icon si-teal"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="qa-text">
+                            <strong>Stock Check</strong>
+                            <span>Verify inventory levels</span>
+                        </div>
+                        <i class="fas fa-chevron-right qa-arrow"></i>
+                    </a>
                 </div>
             </div>
+
 
             <div class="panel">
                 <div class="panel-header">
@@ -248,6 +280,8 @@ $clocked_out = !empty($att_row['time_out']);
             </div>
 
         </div>
+
+
         <div class="panel">
             <div class="panel-header">
                 <div class="ph-icon si-purple"><i class="fas fa-list-check"></i></div>

@@ -112,7 +112,6 @@ if (!isset($_COOKIE['admin_jwt'])) {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -180,14 +179,7 @@ if (!isset($_COOKIE['admin_jwt'])) {
                         <p id="passwordError" style="color:red; display:none; margin-top:4px;"></p>
                     </div>
 
-                    <select name="role" required>
-                        <option value="">-- Select Role --</option>
-                        <option value="cashier">Cashier</option>
-                        <option value="staff">Staff</option>
-                    </select>
-
                     <input type="number" name="store_id" placeholder="Store ID" required>
-
                     <button type="submit">Create Account</button>
                 </form>
             </div>
@@ -198,6 +190,7 @@ if (!isset($_COOKIE['admin_jwt'])) {
                                   s.store_id, s.store_name, s.location
                            FROM users u
                            LEFT JOIN store s ON u.store_id = s.store_id
+                           WHERE role != 'admin'
                            ORDER BY role";
                 $result = $conn->query($sql);
 
@@ -208,7 +201,6 @@ if (!isset($_COOKIE['admin_jwt'])) {
                             <th><i class='fas fa-user'></i> Name</th>
                             <th><i class='fas fa-user'></i> Email</th>
                             <th><i class='fas fa-user-tag'></i> Username</th>
-                            <th><i class='fas fa-user-shield'></i> Role</th>
                             <th><i class='fas fa-store'></i> Store ID</th>
                             <th><i class='fas fa-store-alt'></i> Store Location</th>
                             <th><i class='fas fa-cog'></i> Action</th>
@@ -220,12 +212,13 @@ if (!isset($_COOKIE['admin_jwt'])) {
                         $username = htmlspecialchars(decryptData($row['username']));
                         $role     = decryptData($row['role']);
 
+                        if ($role === 'admin') continue;
+
                         echo "<tr>
                             <td>{$row['user_id']}</td>
                             <td>{$name}</td>
                             <td>{$email}</td>
                             <td>{$username}</td>
-                            <td>{$role}</td>
                             <td>{$row['store_id']}</td>
                             <td>" . htmlspecialchars($row['location'] ?? 'N/A') . "</td>
                             <td>
@@ -254,7 +247,6 @@ if (!isset($_COOKIE['admin_jwt'])) {
             const form            = document.querySelector("form");
 
             if (!password || !confirmPassword || !errorText) return;
-
             const alphanumericRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
 
             function validatePassword() {

@@ -156,18 +156,18 @@ $greeting  = $hour < 12 ? 'Good Morning' : ($hour < 18 ? 'Good Afternoon' : 'Goo
             <div class="card-active-bar"></div>
         </a>
 
-        <a href="expenses.php" class="dashboard-card" data-color="red">
-            <div class="card-bg-icon">🧾</div>
-            <div class="card-inner">
-                <div class="card-emoji">🧾</div>
-                <div class="card-text">
-                    <div class="card-title">Expenses</div>
-                    <div class="card-desc">Cost Summary</div>
-                </div>
-                <div class="card-chevron"><i class="fas fa-chevron-right"></i></div>
-            </div>
-            <div class="card-active-bar"></div>
-        </a>
+        <a href="store.php" class="dashboard-card" data-color="red">
+    <div class="card-bg-icon">🏪</div>
+    <div class="card-inner">
+        <div class="card-emoji">🏪</div>
+        <div class="card-text">
+            <div class="card-title">Stores</div>
+            <div class="card-desc">Manage Branches</div>
+        </div>
+        <div class="card-chevron"><i class="fas fa-chevron-right"></i></div>
+    </div>
+    <div class="card-active-bar"></div>
+</a>
 
         <a href="reports.php" class="dashboard-card" data-color="purple">
             <div class="card-bg-icon">📊</div>
