@@ -12,9 +12,8 @@
 <body>
 
 <div class="container">
-    <!-- Form Card -->
     <div class="form-card">
-        <!-- Header Section Inside Card -->
+  
         <div class="header-section">
             <div class="logo-wrapper">
                 <img src="../img/mrsofty1.png" alt="Mr. Softy Logo" class="brand-logo">
@@ -45,7 +44,7 @@
         </form>
     </div>
 
-    <!-- Back to Login -->
+
     <a href="login.php" class="back-link">
         <span>←</span>
         <span>Back to Login</span>

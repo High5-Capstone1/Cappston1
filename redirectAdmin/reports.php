@@ -567,7 +567,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
             now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true });
     }, 1000);
 
-    // toggle sidebar
+  
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('open');
     }
