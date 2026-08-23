@@ -20,6 +20,31 @@ if (isset($_POST['remove_item'])) {
     exit();
 }
 
+if (isset($_POST['apply_discount_confirm'])) {
+    $id_number = trim($_POST['id_number'] ?? '');
+    $discount_type_input = $_POST['discount_type_input'] ?? '';
+
+    $pwd_pattern = '/^\d{2}-\d{4}-\d{3}-\d{3,7}$/';
+
+    if ($id_number === '' || !in_array($discount_type_input, ['Senior Citizen', 'PWD'], true)) {
+        $_SESSION['discount_error'] = "Please enter the ID number and select a discount type.";
+    } elseif ($discount_type_input === 'PWD' && !preg_match($pwd_pattern, $id_number)) {
+        $_SESSION['discount_error'] = "Invalid PWD ID format. Expected format: RR-PPMM-BBB-NNN (e.g. 13-5416-000-001).";
+    } else {
+        $_SESSION['apply_discount']     = true;
+        $_SESSION['discount_type']      = $discount_type_input;
+        $_SESSION['discount_id_number'] = $id_number;
+    }
+    header("Location: vericationOrder.php");
+    exit();
+}
+
+if (isset($_POST['remove_discount'])) {
+    unset($_SESSION['apply_discount'], $_SESSION['discount_type'], $_SESSION['discount_id_number']);
+    header("Location: vericationOrder.php");
+    exit();
+}
+
 function deductInventory($conn, $store_id, $product_id, $product_qty)
 {
     $stmt = $conn->prepare("
@@ -42,25 +67,32 @@ function deductInventory($conn, $store_id, $product_id, $product_qty)
     }
 }
 
+
+const SENIOR_PWD_DISCOUNT_RATE = 0.12;
+
 if (isset($_POST['confirm_order'])) {
     $conn->begin_transaction();
     $_SESSION['last_sale_ids'] = [];
     try {
-        // Calculate grand total
+
         $grand_total = array_sum(array_column($_SESSION['cart'], 'subtotal'));
 
-        // Create one order record for the entire cart
+        $apply_discount     = $_SESSION['apply_discount'] ?? false;
+        $discount_amount    = $apply_discount ? round($grand_total * SENIOR_PWD_DISCOUNT_RATE, 2) : 0.00;
+        $final_total        = $grand_total - $discount_amount;
+        $discount_type      = $apply_discount ? ($_SESSION['discount_type'] ?? null) : null;
+        $discount_id_number = $apply_discount ? ($_SESSION['discount_id_number'] ?? null) : null;
+
         $stmt = $conn->prepare("
-            INSERT INTO orders (cashier_id, store_id, total_amount, order_date, order_time)
-            VALUES (?, ?, ?, CURDATE(), CURTIME())
+            INSERT INTO orders (cashier_id, store_id, total_amount, discount_type, discount_amount, discount_id_number, order_date, order_time)
+            VALUES (?, ?, ?, ?, ?, ?, CURDATE(), CURTIME())
         ");
-        $stmt->bind_param("iid", $cashier_id, $store_id, $grand_total);
+        $stmt->bind_param("iidsds", $cashier_id, $store_id, $final_total, $discount_type, $discount_amount, $discount_id_number);
         $stmt->execute();
         $order_id = $conn->insert_id;
         $_SESSION['last_order_id'] = $order_id;
 
         foreach ($_SESSION['cart'] as $item) {
-            // Insert sale row linked to this order
             $stmt = $conn->prepare("
                 INSERT INTO sales (cashier_id, store_id, product_id, quantity, subtotal, sale_date, sale_time, order_id)
                 VALUES (?, ?, ?, ?, ?, CURDATE(), CURTIME(), ?)
@@ -79,6 +111,8 @@ if (isset($_POST['confirm_order'])) {
         }
         $conn->commit();
         unset($_SESSION['cart']);
+        unset($_SESSION['apply_discount']);
+        unset($_SESSION['discount_type'], $_SESSION['discount_id_number']);
         $_SESSION['success_message'] = "Order Successfully Confirmed";
         header("Location: vericationOrder.php?success=1");
         exit();
@@ -149,6 +183,13 @@ if (isset($_POST['confirm_order'])) {
             foreach ($_SESSION['cart'] ?? [] as $item) {
                 $grand_total += $item['subtotal'];
             }
+
+            $apply_discount  = $_SESSION['apply_discount'] ?? false;
+            $discount_amount = $apply_discount ? round($grand_total * SENIOR_PWD_DISCOUNT_RATE, 2) : 0.00;
+            $final_total     = $grand_total - $discount_amount;
+
+            $discount_type_display = $_SESSION['discount_type'] ?? null;
+            $discount_id_display   = $_SESSION['discount_id_number'] ?? null;
             ?>
 
             <?php if (empty($_SESSION['cart'])): ?>
@@ -170,8 +211,6 @@ if (isset($_POST['confirm_order'])) {
                     <tbody>
                         <?php
                         foreach ($_SESSION['cart'] ?? [] as $index => $item):
-
-
                         ?>
                             <tr class="item-row">
                                 <td>
@@ -215,6 +254,78 @@ if (isset($_POST['confirm_order'])) {
             <?php endif; ?>
         </div>
 
+        <?php if (!empty($_SESSION['cart'])): ?>
+
+        <div class="card" style="margin-top:16px;">
+            <div class="card-header">
+                <i class="fas fa-id-card"></i>
+                <h3>Senior / PWD Discount</h3>
+            </div>
+
+            <?php if ($apply_discount): ?>
+                <div style="padding:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                    <div>
+                        <p style="margin:0; font-weight:600; color:#333;">
+                            Discount Applied (12%) — <?= htmlspecialchars($discount_type_display) ?>
+                        </p>
+                        <p style="margin:4px 0 0; font-size:13px; color:#777;">
+                            ID No: <?= htmlspecialchars($discount_id_display) ?>
+                        </p>
+                    </div>
+                    <form method="POST" style="margin:0;">
+                        <button type="submit" name="remove_discount" value="1" class="remove-btn" style="white-space:nowrap;">
+                            <i class="fas fa-times-circle"></i> Remove Discount
+                        </button>
+                    </form>
+                </div>
+            <?php else: ?>
+                <div style="padding:16px;">
+                    <button type="button" id="showDiscountFormBtn" class="btn btn-secondary" style="white-space:nowrap;">
+                        <i class="fas fa-plus-circle"></i> Add Discount
+                    </button>
+
+                    <div id="discountFloatPanel" class="discount-float-panel">
+                        <form method="POST" id="discountForm">
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:13px; color:#777; display:block; margin-bottom:4px;">Discount Type</label>
+                                <select name="discount_type_input" id="discountTypeInput" required
+                                    style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd;">
+                                    <option value="" disabled selected>Select type</option>
+                                    <option value="Senior Citizen">Senior Citizen</option>
+                                    <option value="PWD">PWD</option>
+                                </select>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <label id="idNumberLabel" style="font-size:13px; color:#777; display:block; margin-bottom:4px;">ID Number</label>
+                                <input type="text" name="id_number" id="idNumberInput" required
+                                    placeholder="Select discount type first"
+                                    disabled
+                                    style="width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; background:#f2f2f2;">
+                                <small id="idFormatHint" style="display:block; margin-top:4px; font-size:12px; color:#999;"></small>
+                                <small id="idFormatError" style="display:none; margin-top:4px; font-size:12px; color:#e74c3c;"></small>
+                            </div>
+                            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                <button type="button" id="cancelDiscountBtn" class="btn btn-secondary" style="white-space:nowrap;">
+                                    Cancel
+                                </button>
+                                <button type="submit" name="apply_discount_confirm" value="1" class="btn btn-confirm" style="white-space:nowrap;">
+                                    <i class="fas fa-check-circle"></i> Apply Discount (12%)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <?php if (!empty($_SESSION['discount_error'])): ?>
+                    <p style="padding:0 16px 12px; color:#e74c3c; font-size:13px;">
+                        <?= htmlspecialchars($_SESSION['discount_error']) ?>
+                    </p>
+                    <?php unset($_SESSION['discount_error']); ?>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <div class="summary-card">
             <div class="summary-body">
                 <div class="summary-row">
@@ -229,10 +340,22 @@ if (isset($_POST['confirm_order'])) {
                     <span class="label"><i class="fas fa-calendar" style="color:var(--sky-400);margin-right:6px;"></i>Date</span>
                     <span class="value"><?= date('F d, Y') ?></span>
                 </div>
+
+                <?php if ($apply_discount): ?>
+                <div class="summary-row">
+                    <span class="label"><i class="fas fa-receipt" style="color:var(--sky-400);margin-right:6px;"></i>Subtotal</span>
+                    <span class="value">₱<?= number_format($grand_total, 2) ?></span>
+                </div>
+                <div class="summary-row">
+                    <span class="label"><i class="fas fa-tag" style="color:#e74c3c;margin-right:6px;"></i><?= htmlspecialchars($discount_type_display) ?> Discount (12%)</span>
+                    <span class="value" style="color:#e74c3c;">-₱<?= number_format($discount_amount, 2) ?></span>
+                </div>
+                <?php endif; ?>
+
                 <hr class="summary-divider">
                 <div class="summary-total">
                     <span class="total-label"><i class="fas fa-receipt"></i> Total Amount</span>
-                    <span class="total-amount">₱<?= number_format($grand_total, 2) ?></span>
+                    <span class="total-amount">₱<?= number_format($final_total, 2) ?></span>
                 </div>
             </div>
         </div>
@@ -274,11 +397,79 @@ document.addEventListener("DOMContentLoaded", function() {
     }, 1600);
 });
 </script>
-<?php 
+<?php
 unset($_SESSION['success_message']);
-endif; 
+endif;
 ?>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const showBtn    = document.getElementById("showDiscountFormBtn");
+    const cancelBtn  = document.getElementById("cancelDiscountBtn");
+    const panel      = document.getElementById("discountFloatPanel");
+    const typeInput  = document.getElementById("discountTypeInput");
+    const idInput    = document.getElementById("idNumberInput");
+    const idLabel    = document.getElementById("idNumberLabel");
+    const hint       = document.getElementById("idFormatHint");
+    const errorMsg   = document.getElementById("idFormatError");
+    const form       = document.getElementById("discountForm");
+
+    if (!showBtn || !panel) return;
+
+    const pwdPattern = /^\d{2}-\d{4}-\d{3}-\d{3,7}$/;
+
+    showBtn.addEventListener("click", function () {
+        panel.classList.add("open");
+        showBtn.style.display = "none";
+    });
+
+    cancelBtn.addEventListener("click", function () {
+        panel.classList.remove("open");
+        showBtn.style.display = "inline-flex";
+        form.reset();
+        idInput.disabled = true;
+        idInput.style.background = "#f2f2f2";
+        idLabel.textContent = "ID Number";
+        idInput.placeholder = "Select discount type first";
+        hint.textContent = "";
+        errorMsg.style.display = "none";
+    });
+
+    typeInput.addEventListener("change", function () {
+        idInput.disabled = false;
+        idInput.style.background = "#fff";
+        idInput.value = "";
+        errorMsg.style.display = "none";
+
+        if (typeInput.value === "PWD") {
+            idLabel.textContent = "PWD ID Number";
+            idInput.placeholder = "13-5416-000-001";
+          
+        } else if (typeInput.value === "Senior Citizen") {
+            idLabel.textContent = "Senior Citizen ID Number";
+            idInput.placeholder = "Enter OSCA ID number";
+           
+        } else {
+            idLabel.textContent = "ID Number";
+            idInput.placeholder = "Select discount type first";
+            hint.textContent = "";
+            idInput.disabled = true;
+            idInput.style.background = "#f2f2f2";
+        }
+    });
+
+    form.addEventListener("submit", function (e) {
+        errorMsg.style.display = "none";
+
+        if (typeInput.value === "PWD" && !pwdPattern.test(idInput.value.trim())) {
+            e.preventDefault();
+            errorMsg.textContent = "Invalid PWD ID format. Expected RR-PPMM-BBB-NNN (e.g. 13-5416-000-001).";
+            errorMsg.style.display = "block";
+            idInput.focus();
+        }
+    });
+});
+</script>
 
 </body>
 </html>
-

@@ -1,32 +1,109 @@
 <?php
 require_once '../session.php';
 include "../DBconnect.php";
-
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("Location: ../login.php");
-    exit();
+class StoreAuth
+{
+    public static function enforceAdmin(string $redirectUrl = '../login.php'): void
+    {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+            header("Location: {$redirectUrl}");
+            exit();
+        }
+    }
 }
 
-$adminName = $_SESSION['name'] ?? 'Admin';
-$success_msg = '';
-$error_msg   = '';
+class StoreRepository
+{
+    private mysqli $conn;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    //ensure action insist
-    $action = $_POST['action'] ?? null;
+    public function __construct(mysqli $conn)
+    {
+        $this->conn = $conn;
+    }
 
-    if ($action === 'add') {
-        $store_name = trim($_POST['store_name'] ?? '');
-        $location   = trim($_POST['location'] ?? '');
+    public function getAll(): array
+    {
+        $result = $this->conn->query("SELECT * FROM store ORDER BY store_id DESC");
+        $stores = [];
+        while ($row = $result->fetch_assoc()) $stores[] = $row;
+        return $stores;
+    }
+
+    public function findById(int $storeId): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM store WHERE store_id=?");
+        $stmt->bind_param("i", $storeId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
+    public function add(string $storeName, string $location): bool
+    {
+        $stmt = $this->conn->prepare("INSERT INTO store (store_name, location) VALUES (?, ?)");
+        $stmt->bind_param("ss", $storeName, $location);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function delete(int $storeId): bool
+    {
+        $stmt = $this->conn->prepare("DELETE FROM store WHERE store_id=?");
+        $stmt->bind_param("i", $storeId);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function update(int $storeId, string $storeName, string $location): bool
+    {
+        $stmt = $this->conn->prepare("UPDATE store SET store_name=?, location=? WHERE store_id=?");
+        $stmt->bind_param("ssi", $storeName, $location, $storeId);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+}
+
+class StoreController
+{
+    private StoreRepository $repository;
+
+    public function __construct(StoreRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public function handleRequest(array $post): void
+    {
+        $action = $post['action'] ?? null;
+
+        if ($action === 'add') {
+            $this->handleAdd($post);
+        } elseif ($action === 'delete') {
+            $this->handleDelete($post);
+        } elseif ($action === 'edit') {
+            $this->handleEdit($post);
+        } else {
+            $_SESSION['error'] = "Invalid action.";
+            header("Location: store.php");
+            exit();
+        }
+    }
+
+    private function handleAdd(array $post): void
+    {
+        $store_name = trim($post['store_name'] ?? '');
+        $location   = trim($post['location'] ?? '');
+
         if ($store_name && $location) {
-            $stmt = $conn->prepare("INSERT INTO store (store_name, location) VALUES (?, ?)");
-            $stmt->bind_param("ss", $store_name, $location);
-            if ($stmt->execute()) {
+            if ($this->repository->add($store_name, $location)) {
                 $_SESSION['success'] = "Store added successfully!";
             } else {
                 $_SESSION['error'] = "Error adding store.";
             }
-            $stmt->close();
             header("Location: store.php");
             exit();
         } else {
@@ -36,17 +113,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    elseif ($action === 'delete') {
-        $store_id = (int)($_POST['store_id'] ?? 0);
+    private function handleDelete(array $post): void
+    {
+        $store_id = (int)($post['store_id'] ?? 0);
+
         if ($store_id) {
-            $stmt = $conn->prepare("DELETE FROM store WHERE store_id=?");
-            $stmt->bind_param("i", $store_id);
-            if ($stmt->execute()) {
+            if ($this->repository->delete($store_id)) {
                 $_SESSION['success'] = "Store deleted successfully!";
             } else {
                 $_SESSION['error'] = "Error deleting store.";
             }
-            $stmt->close();
         } else {
             $_SESSION['error'] = "Invalid store ID.";
         }
@@ -54,49 +130,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    elseif ($action === 'edit') {
-        $store_id   = (int)($_POST['store_id'] ?? 0);
-        $store_name = trim($_POST['store_name'] ?? '');
-        $location   = trim($_POST['location'] ?? '');
+    private function handleEdit(array $post): void
+    {
+        $store_id   = (int)($post['store_id'] ?? 0);
+        $store_name = trim($post['store_name'] ?? '');
+        $location   = trim($post['location'] ?? '');
+
         if ($store_id && $store_name && $location) {
-            $stmt = $conn->prepare("UPDATE store SET store_name=?, location=? WHERE store_id=?");
-            $stmt->bind_param("ssi", $store_name, $location, $store_id);
-            if ($stmt->execute()) {
+            if ($this->repository->update($store_id, $store_name, $location)) {
                 $_SESSION['success'] = "Store updated successfully!";
             } else {
                 $_SESSION['error'] = "Error updating store.";
             }
-            $stmt->close();
         } else {
             $_SESSION['error'] = "All fields are required or invalid store ID.";
         }
         header("Location: store.php");
         exit();
     }
+}
 
-    else {
-        //unknown or missing action
-        $_SESSION['error'] = "Invalid action.";
-        header("Location: store.php");
-        exit();
-    }
+StoreAuth::enforceAdmin();
+
+$adminName = $_SESSION['name'] ?? 'Admin';
+$success_msg = '';
+$error_msg   = '';
+
+$repository = new StoreRepository($conn);
+$controller = new StoreController($repository);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    //ensure action insist
+    $controller->handleRequest($_POST);
 }
 
 //fetch all stores
-$stores_result = $conn->query("SELECT * FROM store ORDER BY store_id DESC");
-$stores = [];
-while ($row = $stores_result->fetch_assoc()) $stores[] = $row;
+$stores = $repository->getAll();
 $store_count = count($stores);
 
 // Edit prefill
 $edit_store = null;
 if (isset($_GET['edit'])) {
     $edit_id = (int)$_GET['edit'];
-    $estmt = $conn->prepare("SELECT * FROM store WHERE store_id=?");
-    $estmt->bind_param("i", $edit_id);
-    $estmt->execute();
-    $edit_store = $estmt->get_result()->fetch_assoc();
-    $estmt->close();
+    $edit_store = $repository->findById($edit_id);
 }
 ?>
 <!DOCTYPE html>
@@ -115,7 +191,7 @@ if (isset($_GET['edit'])) {
 </head>
 <body>
 
-<!-- Top Bar -->
+
 <div class="top-bar">
     <a href="adminDashboard.php" class="back-btn"><i class="fas fa-chevron-left"></i></a>
     <span class="top-bar-icon"><i class="fas fa-store"></i></span>

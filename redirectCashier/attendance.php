@@ -2,88 +2,164 @@
 require_once '../session.php';
 include '../DBconnect.php';
 
-define('ENCRYPTION_KEY', 'MrSoftyCapstone2025SecureKey!@#$');
-define('ENCRYPTION_METHOD', 'AES-256-CBC');
+class AttendanceEncryptor
+{
+    private string $key;
+    private string $method;
 
-function decryptData($data) {
-    if (empty($data)) return $data;
-    $data = base64_decode($data);
-    $parts = explode('::', $data, 2);
-    if (count($parts) !== 2) return $data;
-    list($iv, $encrypted) = $parts;
-    return openssl_decrypt($encrypted, ENCRYPTION_METHOD, ENCRYPTION_KEY, 0, $iv);
+    public function __construct(string $key = 'MrSoftyCapstone2025SecureKey!@#$', string $method = 'AES-256-CBC')
+    {
+        $this->key = $key;
+        $this->method = $method;
+    }
+
+    public function decrypt($data)
+    {
+        if (empty($data)) return $data;
+
+        $data = base64_decode($data);
+        $parts = explode('::', $data, 2);
+        if (count($parts) !== 2) return $data;
+
+        list($iv, $encrypted) = $parts;
+        return openssl_decrypt($encrypted, $this->method, $this->key, 0, $iv);
+    }
 }
 
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['cashier','staff'])) {
-    header("Location: roleLogin/login.php");
-    exit();
+class AttendanceAuth
+{
+    public static function enforceRole(array $allowedRoles, string $redirectUrl = 'roleLogin/login.php'): void
+    {
+        if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowedRoles)) {
+            header("Location: {$redirectUrl}");
+            exit();
+        }
+    }
 }
+
+class AttendanceRepository
+{
+    private mysqli $conn;
+
+    public function __construct(mysqli $conn)
+    {
+        $this->conn = $conn;
+    }
+
+    public function getTodayAttendance(int $userId, string $date): ?array
+    {
+        $sql = "SELECT * FROM attendance WHERE user_id = ? AND date = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("is", $userId, $date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ?: null;
+    }
+
+    public function insertTimeIn(int $userId, $storeId, string $role, string $date, string $timeIn): void
+    {
+        $insert = "INSERT INTO attendance (user_id, store_id, role, date, time_in)
+                   VALUES (?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($insert);
+        $stmt->bind_param("iisss", $userId, $storeId, $role, $date, $timeIn);
+        $stmt->execute();
+    }
+
+    public function updateTimeOut(int $attendanceId, string $timeOut): void
+    {
+        $update = "UPDATE attendance SET time_out = ? WHERE attendance_id = ?";
+        $stmt = $this->conn->prepare($update);
+        $stmt->bind_param("si", $timeOut, $attendanceId);
+        $stmt->execute();
+    }
+
+    public function getHistory(int $userId, int $limit = 10): mysqli_result
+    {
+        $sql = "SELECT a.date, a.time_in, a.time_out, u.name
+                FROM attendance a LEFT JOIN users u
+                                ON a.user_id = u.user_id
+                WHERE a.user_id = ?
+                ORDER BY date DESC
+                LIMIT {$limit}";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        return $stmt->get_result();
+    }
+}
+
+class AttendanceService
+{
+    private AttendanceRepository $repository;
+
+    public function __construct(AttendanceRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public function handleRequest(array $post, int $userId, $storeId, string $role, string $date, ?array $todayAttendance): ?array
+    {
+        if (isset($post['time_in_btn']) && !$todayAttendance) {
+            $timeIn = date('H:i:s');
+            $this->repository->insertTimeIn($userId, $storeId, $role, $date, $timeIn);
+
+            return [
+                'message' => "Time In successfully recorded",
+                'message_type' => "success",
+            ];
+        }
+
+        if (isset($post['time_out_btn']) && $todayAttendance && empty($todayAttendance['time_out'])) {
+            $timeOut = date('H:i:s');
+
+            if ($timeOut <= $todayAttendance['time_in']) {
+                return [
+                    'message' => "Invalid time-out detected. Cannot be earlier than Time In.",
+                    'message_type' => "error",
+                ];
+            }
+
+            $this->repository->updateTimeOut($todayAttendance['attendance_id'], $timeOut);
+
+            return [
+                'message' => "Time Out successfully recorded",
+                'message_type' => "success",
+            ];
+        }
+
+        return [
+            'message' => "Attendance already completed for today",
+            'message_type' => "info",
+        ];
+    }
+}
+
+AttendanceAuth::enforceRole(['cashier', 'staff']);
+
 $user_id  = $_SESSION['user_id'];
 $store_id = $_SESSION['store_id'];
 $role     = $_SESSION['role'];
 $today    = date('Y-m-d');
 $username = $_SESSION['username'] ?? 'User';
 
-// today attendance
-$sql = "SELECT * FROM attendance WHERE user_id = ? AND date = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("is", $user_id, $today);
-$stmt->execute();
-$todayAttendance = $stmt->get_result()->fetch_assoc();
+$encryptor  = new AttendanceEncryptor();
+$repository = new AttendanceRepository($conn);
+$service    = new AttendanceService($repository);
+
+$todayAttendance = $repository->getTodayAttendance($user_id, $today);
+
+$message = null;
+$message_type = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $result = $service->handleRequest($_POST, $user_id, $store_id, $role, $today, $todayAttendance);
+    $message = $result['message'];
+    $message_type = $result['message_type'];
 
-    // time in
-    if (isset($_POST['time_in_btn']) && !$todayAttendance) {
-
-        $time_in = date('H:i:s'); 
-
-        $insert = "INSERT INTO attendance (user_id, store_id, role, date, time_in)
-                   VALUES (?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($insert);
-        $stmt->bind_param("iisss", $user_id, $store_id, $role, $today, $time_in);
-        $stmt->execute();
-
-        $message = "Time In successfully recorded";
-        $message_type = "success";
-
-   
-    } elseif (isset($_POST['time_out_btn']) && $todayAttendance && empty($todayAttendance['time_out'])) {
-        $time_out = date('H:i:s'); 
-
-        
-        if ($time_out <= $todayAttendance['time_in']) {
-            $message = "Invalid time-out detected. Cannot be earlier than Time In.";
-            $message_type = "error";
-        } else {
-            $update = "UPDATE attendance SET time_out = ? WHERE attendance_id = ?";
-            $stmt = $conn->prepare($update);
-            $stmt->bind_param("si", $time_out, $todayAttendance['attendance_id']);
-            $stmt->execute();
-
-            $message = "Time Out successfully recorded";
-            $message_type = "success";
-        }
-
-    } else {
-        $message = "Attendance already completed for today";
-        $message_type = "info";
-    }
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("is", $user_id, $today);
-    $stmt->execute();
-    $todayAttendance = $stmt->get_result()->fetch_assoc();
+    $todayAttendance = $repository->getTodayAttendance($user_id, $today);
 }
 
-$history_sql = "SELECT a.date, a.time_in, a.time_out, u.name
-                FROM attendance a LEFT JOIN users u
-                                ON a.user_id = u.user_id
-                WHERE a.user_id = ?
-                ORDER BY date DESC
-                LIMIT 10";
-$stmt = $conn->prepare($history_sql);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$history = $stmt->get_result();
+$history = $repository->getHistory($user_id, 10);
 ?>
 
 <!DOCTYPE html>
@@ -268,7 +344,7 @@ $history = $stmt->get_result();
                                             </span>
                                         </td>
                                         <td>
-                                            <span><?= htmlspecialchars(decryptData($row['name'])) ?></span>
+                                            <span><?= htmlspecialchars($encryptor->decrypt($row['name'])) ?></span>
                                         </td>
                                         <td>
                                             <?php if ($row['time_in']): ?>

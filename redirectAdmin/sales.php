@@ -38,6 +38,9 @@ $sql = "
         o.order_date,
         o.order_time,
         o.total_amount,
+        o.discount_type,
+        o.discount_amount,
+        o.discount_id_number,
         s.sale_id,
         p.product_name,
         p.size,
@@ -90,19 +93,26 @@ $result = $stmt->get_result();
 
 $orders = [];
 $grand_total = 0;
+$grand_discount_total = 0;
 while ($row = $result->fetch_assoc()) {
     $oid = $row['order_id'];
     if (!isset($orders[$oid])) {
         $orders[$oid] = [
-            'order_id'     => $oid,
-            'order_date'   => $row['order_date'],
-            'order_time'   => $row['order_time'],
-            'total_amount' => $row['total_amount'],
-            'cashier_name' => $row['cashier_name'],
-            'location'     => $row['location'],
-            'items'        => []
+            'order_id'           => $oid,
+            'order_date'         => $row['order_date'],
+            'order_time'         => $row['order_time'],
+            'total_amount'       => $row['total_amount'],
+            'discount_type'      => $row['discount_type'],
+            'discount_amount'    => $row['discount_amount'],
+            'discount_id_number' => $row['discount_id_number'],
+            'cashier_name'       => $row['cashier_name'],
+            'location'           => $row['location'],
+            'items'              => []
         ];
         $grand_total += $row['total_amount'];
+        if (!empty($row['discount_type']) && $row['discount_amount'] > 0) {
+            $grand_discount_total += $row['discount_amount'];
+        }
     }
     $orders[$oid]['items'][] = [
         'product_name' => $row['product_name'],
@@ -121,6 +131,13 @@ while ($row = $result->fetch_assoc()) {
     <title>Admin | Sales Inventory Summary</title>
     <link rel="stylesheet" href="../Design/adminSalesHistory.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .discount-badge { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+        .order-subtotal-strike { font-size: 0.78rem; font-weight: 500; opacity: 0.85; text-decoration: line-through; display: block; text-align: right; margin-bottom: 2px; }
+        .discount-detail-row { background: #fef2f2; padding: 8px 18px; font-size: 0.82rem; color: #b91c1c; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; border-top: 1px solid #fee2e2; border-bottom: 1px solid #fee2e2; }
+        .discount-detail-row .discount-id { font-weight: 600; }
+        .grand-discount-badge { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 10px; padding: 8px 16px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; }
+    </style>
 </head>
 <body>
 
@@ -193,6 +210,12 @@ while ($row = $result->fetch_assoc()) {
         <div class="count">
             Showing <span><?= count($orders) ?></span> order<?= count($orders) !== 1 ? 's' : '' ?>
         </div>
+        <?php if ($grand_discount_total > 0): ?>
+        <div class="grand-discount-badge">
+            <i class="fas fa-tag"></i>
+            Total Discounts Given: -₱<?= number_format($grand_discount_total, 2) ?>
+        </div>
+        <?php endif; ?>
         <div class="grand-total-badge">
             <i class="fas fa-peso-sign"></i>
             Grand Total: ₱<?= number_format($grand_total, 2) ?>
@@ -204,6 +227,10 @@ while ($row = $result->fetch_assoc()) {
     <div class="orders-list">
         <?php if (count($orders) > 0): ?>
             <?php foreach ($orders as $order): ?>
+            <?php
+                $has_discount = !empty($order['discount_type']) && $order['discount_amount'] > 0;
+                $items_subtotal = array_sum(array_column($order['items'], 'subtotal'));
+            ?>
             <div class="order-card">
 
                 <!-- Blue header — matches cashier salesHistory -->
@@ -229,11 +256,34 @@ while ($row = $result->fetch_assoc()) {
                             <i class="fas fa-location-dot"></i>
                             <?= htmlspecialchars($order['location']) ?>
                         </div>
+                        <?php if ($has_discount): ?>
+                        <div class="order-meta-item">
+                            <span class="discount-badge">
+                                <i class="fas fa-tag"></i> <?= htmlspecialchars($order['discount_type']) ?> -12%
+                            </span>
+                        </div>
+                        <?php endif; ?>
                     </div>
-                    <div class="order-total-badge">
-                        ₱<?= number_format($order['total_amount'], 2) ?>
+                    <div>
+                        <?php if ($has_discount): ?>
+                            <span class="order-subtotal-strike">₱<?= number_format($items_subtotal, 2) ?></span>
+                        <?php endif; ?>
+                        <div class="order-total-badge">
+                            ₱<?= number_format($order['total_amount'], 2) ?>
+                        </div>
                     </div>
                 </div>
+
+                <?php if ($has_discount): ?>
+                <div class="discount-detail-row">
+                    <span>
+                        <i class="fas fa-id-card" style="margin-right:5px;"></i>
+                        <?= htmlspecialchars($order['discount_type']) ?> ID:
+                        <span class="discount-id"><?= htmlspecialchars($order['discount_id_number'] ?? 'N/A') ?></span>
+                    </span>
+                    <span>Discount Applied: -₱<?= number_format($order['discount_amount'], 2) ?></span>
+                </div>
+                <?php endif; ?>
 
                 <!-- Column headers -->
                 <div class="items-header">

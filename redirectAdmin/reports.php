@@ -21,13 +21,13 @@ if ($daysRange > $MAX_DAYS) {
     die("Date range too large. Please select up to 1 year only.");
 }
 if ($daysRange <= 31) {
-    $salesGroupBy = "DATE(s.sale_date)";
+    $salesGroupBy = "DATE(o.order_date)";
     $salesDateFormat = "%Y-%m-%d";
 } elseif ($daysRange <= 180) {
-    $salesGroupBy = "YEAR(s.sale_date), MONTH(s.sale_date)";
+    $salesGroupBy = "YEAR(o.order_date), MONTH(o.order_date)";
     $salesDateFormat = "%Y-%m";
 } else {
-    $salesGroupBy = "YEAR(s.sale_date)";
+    $salesGroupBy = "YEAR(o.order_date)";
     $salesDateFormat = "%Y";
 }
 
@@ -106,16 +106,17 @@ if ($selectedLocation != 'all') {
     $locationFilterSales = " AND st.location = '" . mysqli_real_escape_string($conn, $selectedLocation) . "'";
 }
 
+// --- UPDATED: source revenue from orders.total_amount (already reflects discounts)
+// instead of summing sales.subtotal, which is pre-discount per item.
 $querySalesOverTime = "
     SELECT 
-        DATE_FORMAT(s.sale_date, '$salesDateFormat') AS sale_period,
-        SUM(s.subtotal) AS daily_sales
-    FROM sales s
-    JOIN store st ON s.store_id = st.store_id
-    WHERE s.is_deleted = 0
-    AND s.sale_date >= '$startDate' AND s.sale_date <= '$endDate'
+        DATE_FORMAT(o.order_date, '$salesDateFormat') AS sale_period,
+        SUM(o.total_amount) AS daily_sales
+    FROM orders o
+    JOIN store st ON o.store_id = st.store_id
+    WHERE o.order_date >= '$startDate' AND o.order_date <= '$endDate'
     $locationFilterSales
-    GROUP BY DATE_FORMAT(s.sale_date, '$salesDateFormat')  
+    GROUP BY DATE_FORMAT(o.order_date, '$salesDateFormat')  
     ORDER BY sale_period ASC
 ";
 
@@ -130,6 +131,8 @@ if (count($salesOverTimeData) > 120) {
     $salesOverTimeData = array_slice($salesOverTimeData, -120);
 }
 
+// Product quantity is unaffected by discounts (12% off the price doesn't change units sold),
+// so this stays sourced from sales/products as before.
 $queryProductQuantity = "
     SELECT 
         p.product_name,
@@ -149,40 +152,46 @@ while ($row = mysqli_fetch_assoc($resultProductQuantity)) {
     $productQuantityData[] = $row;
 }
 
+// --- UPDATED: today's revenue from orders.total_amount
 $queryTodaySales = "
     SELECT 
-        SUM(s.subtotal + IFNULL(sts.total_topping, 0)) AS today_sales
-    FROM sales s
-    JOIN store st ON s.store_id = st.store_id
-    LEFT JOIN (
-        SELECT stt.sale_id, SUM(t.price) AS total_topping
-        FROM sale_toppings stt
-        JOIN toppings t ON stt.topping_id = t.topping_id
-        GROUP BY stt.sale_id
-    ) sts ON s.sale_id = sts.sale_id
-    WHERE DATE(s.sale_date) = CURDATE()
+        SUM(o.total_amount) AS today_sales
+    FROM orders o
+    JOIN store st ON o.store_id = st.store_id
+    WHERE DATE(o.order_date) = CURDATE()
     $locationFilterSales
 ";
 $resultTodaySales = mysqli_query($conn, $queryTodaySales);
 $todaySales = mysqli_fetch_assoc($resultTodaySales);
 
+// --- UPDATED: month's revenue from orders.total_amount
 $queryMonthSales = "
     SELECT 
-        SUM(s.subtotal + IFNULL(sts.total_topping, 0)) AS month_sales
-    FROM sales s
-    JOIN store st ON s.store_id = st.store_id
-    LEFT JOIN (
-        SELECT stt.sale_id, SUM(t.price) AS total_topping
-        FROM sale_toppings stt
-        JOIN toppings t ON stt.topping_id = t.topping_id
-        GROUP BY stt.sale_id
-    ) sts ON s.sale_id = sts.sale_id
-    WHERE MONTH(s.sale_date) = MONTH(CURDATE()) 
-    AND YEAR(s.sale_date) = YEAR(CURDATE())
+        SUM(o.total_amount) AS month_sales
+    FROM orders o
+    JOIN store st ON o.store_id = st.store_id
+    WHERE MONTH(o.order_date) = MONTH(CURDATE()) 
+    AND YEAR(o.order_date) = YEAR(CURDATE())
     $locationFilterSales
 ";
 $resultMonthSales = mysqli_query($conn, $queryMonthSales);
 $monthSales = mysqli_fetch_assoc($resultMonthSales);
+
+// --- NEW: total discounts given in range, handy for an admin insight card
+$queryDiscountsGiven = "
+    SELECT 
+        COUNT(*) AS discount_count,
+        SUM(o.discount_amount) AS total_discounts
+    FROM orders o
+    JOIN store st ON o.store_id = st.store_id
+    WHERE o.order_date >= '$startDate' AND o.order_date <= '$endDate'
+    AND o.discount_amount > 0
+    $locationFilterSales
+";
+$resultDiscountsGiven = mysqli_query($conn, $queryDiscountsGiven);
+$discountsGiven = mysqli_fetch_assoc($resultDiscountsGiven);
+$totalDiscountsInRange = $discountsGiven['total_discounts'] ?? 0;
+$discountCountInRange  = $discountsGiven['discount_count'] ?? 0;
 
 $salesDatesJson = json_encode(array_column($salesOverTimeData, 'sale_period'));
 $salesAmountJson = json_encode(array_column($salesOverTimeData, 'daily_sales'));
@@ -227,6 +236,10 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
             <a href="#section-insights" class="sidebar-link" data-section="insights">
                 <span class="sidebar-icon">💡</span>
                 <span>Insights</span>
+            </a>
+            <a href="#section-recommendations" class="sidebar-link" data-section="recommendations">
+                <span class="sidebar-icon">🎯</span>
+                <span>Recommendations</span>
             </a>
         </nav>
        <div class="sidebar-footer">
@@ -273,72 +286,26 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
 
             <section id="section-stats">
 
-                <div class="kpi-banner-row">
-                    <?php
-                        $todayAtt  = $todayStats['total_attendance'] ?? 0;
-                        $todayLate = $todayStats['total_late'] ?? 0;
-                        $todayOnTime = $todayAtt - $todayLate;
-                        $lateRate  = $todayAtt > 0 ? round(($todayLate / $todayAtt) * 100, 1) : 0;
-                        $onTimeRate = $todayAtt > 0 ? round(($todayOnTime / $todayAtt) * 100, 1) : 0;
-                        $todaySalesVal = $todaySales['today_sales'] ?? 0;
-                        $monthSalesVal = $monthSales['month_sales'] ?? 0;
+                <?php
+                    // Kept: these values still power the stat cards below and the
+                    // Insights / Recommendations sections further down the page.
+                    $todayAtt  = $todayStats['total_attendance'] ?? 0;
+                    $todayLate = $todayStats['total_late'] ?? 0;
+                    $todayOnTime = $todayAtt - $todayLate;
+                    $lateRate  = $todayAtt > 0 ? round(($todayLate / $todayAtt) * 100, 1) : 0;
+                    $onTimeRate = $todayAtt > 0 ? round(($todayOnTime / $todayAtt) * 100, 1) : 0;
+                    $todaySalesVal = $todaySales['today_sales'] ?? 0;
+                    $monthSalesVal = $monthSales['month_sales'] ?? 0;
 
-                        $totalSalesInRange = array_sum(array_column($salesOverTimeData, 'daily_sales'));
-                        $salesDays = max(count($salesOverTimeData), 1);
-                        $avgDailySales = $totalSalesInRange / $salesDays;
+                    $totalSalesInRange = array_sum(array_column($salesOverTimeData, 'daily_sales'));
+                    $salesDays = max(count($salesOverTimeData), 1);
+                    $avgDailySales = $totalSalesInRange / $salesDays;
 
-                        $totalAttRange = array_sum(array_column($attendanceOverTimeData, 'total_attendance'));
-                        $totalLateRange = array_sum(array_column($attendanceOverTimeData, 'total_late'));
-                        $rangeAttDays = max(count($attendanceOverTimeData), 1);
-                        $avgDailyAtt = round($totalAttRange / $rangeAttDays, 1);
-                    ?>
-                    <div class="kpi-banner kpi-blue">
-                        <div class="kpi-banner-icon">👥</div>
-                        <div class="kpi-banner-body">
-                            <div class="kpi-banner-label">Avg Daily Attendance</div>
-                            <div class="kpi-banner-value"><?php echo $avgDailyAtt; ?></div>
-                            <div class="kpi-banner-sub">over selected range</div>
-                        </div>
-                        <div class="kpi-banner-chart-mini">
-                            <canvas id="sparkAtt"></canvas>
-                        </div>
-                    </div>
-                    <div class="kpi-banner kpi-rose">
-                        <div class="kpi-banner-icon">⏰</div>
-                        <div class="kpi-banner-body">
-                            <div class="kpi-banner-label">Today's Late Rate</div>
-                            <div class="kpi-banner-value"><?php echo $lateRate; ?>%</div>
-                            <div class="kpi-banner-sub"><?php echo $todayLate; ?> of <?php echo $todayAtt; ?> check-ins</div>
-                        </div>
-                        <div class="kpi-donut-wrap">
-                            <canvas id="donutLate"></canvas>
-                            <span class="kpi-donut-label"><?php echo $lateRate; ?>%</span>
-                        </div>
-                    </div>
-                    <div class="kpi-banner kpi-emerald">
-                        <div class="kpi-banner-icon">💰</div>
-                        <div class="kpi-banner-body">
-                            <div class="kpi-banner-label">Avg Daily Sales</div>
-                            <div class="kpi-banner-value">₱<?php echo number_format($avgDailySales, 0); ?></div>
-                            <div class="kpi-banner-sub">over selected range</div>
-                        </div>
-                        <div class="kpi-banner-chart-mini">
-                            <canvas id="sparkSales"></canvas>
-                        </div>
-                    </div>
-                    <div class="kpi-banner kpi-teal">
-                        <div class="kpi-banner-icon">✅</div>
-                        <div class="kpi-banner-body">
-                            <div class="kpi-banner-label">On-Time Rate Today</div>
-                            <div class="kpi-banner-value"><?php echo $onTimeRate; ?>%</div>
-                            <div class="kpi-banner-sub"><?php echo $todayOnTime; ?> on time today</div>
-                        </div>
-                        <div class="kpi-donut-wrap">
-                            <canvas id="donutOnTime"></canvas>
-                            <span class="kpi-donut-label"><?php echo $onTimeRate; ?>%</span>
-                        </div>
-                    </div>
-                </div>
+                    $totalAttRange = array_sum(array_column($attendanceOverTimeData, 'total_attendance'));
+                    $totalLateRange = array_sum(array_column($attendanceOverTimeData, 'total_late'));
+                    $rangeAttDays = max(count($attendanceOverTimeData), 1);
+                    $avgDailyAtt = round($totalAttRange / $rangeAttDays, 1);
+                ?>
 
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -448,8 +415,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
                 <span class="section-divider-label">💡 Smart Insights</span>
             </div>
 
-            <div class="insights-grid">
-                <?php
+            <?php
                     $totalSales      = array_sum(array_column($salesOverTimeData, 'daily_sales'));
                     $peakSales       = count($salesOverTimeData) ? max(array_column($salesOverTimeData, 'daily_sales')) : 0;
                     $peakSalesIdx    = count($salesOverTimeData) ? array_search($peakSales, array_column($salesOverTimeData, 'daily_sales')) : 0;
@@ -509,18 +475,166 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
                             'value' => number_format($totalAttRange),
                             'desc'  => 'Over <strong>' . $rangeAttDays . ' day(s)</strong> with <strong>' . number_format($totalLateRange) . '</strong> late arrivals.',
                         ],
+                        [
+                            'icon'  => '🏷️',
+                            'color' => 'rose',
+                            'title' => 'Discounts Given',
+                            'value' => '₱' . number_format($totalDiscountsInRange, 2),
+                            'desc'  => '<strong>' . number_format($discountCountInRange) . ' order(s)</strong> used a Senior/PWD discount in this range.',
+                        ],
                     ];
                 ?>
-                <?php foreach ($insights as $ins): ?>
-                <div class="insight-card insight-<?php echo $ins['color']; ?>">
-                    <div class="insight-icon"><?php echo $ins['icon']; ?></div>
-                    <div class="insight-body">
-                        <div class="insight-title"><?php echo $ins['title']; ?></div>
-                        <div class="insight-value"><?php echo $ins['value']; ?></div>
-                        <div class="insight-desc"><?php echo $ins['desc']; ?></div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+
+            <div style="background:#fff; border-radius:10px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f8fafc;">
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0; width:36px;">#</th>
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Insight</th>
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Details</th>
+                            <th style="text-align:right; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($insights as $i => $ins): ?>
+                        <tr style="<?php echo $i < count($insights) - 1 ? 'border-bottom:1px solid #f1f5f9;' : ''; ?>">
+                            <td style="padding:14px 18px; color:#94a3b8; font-size:0.85rem; vertical-align:top;"><?php echo $i + 1; ?></td>
+                            <td style="padding:14px 18px; vertical-align:top; white-space:nowrap;">
+                                <span style="margin-right:6px;"><?php echo $ins['icon']; ?></span>
+                                <strong style="color:#1e293b; font-size:0.92rem;"><?php echo $ins['title']; ?></strong>
+                            </td>
+                            <td style="padding:14px 18px; color:#475569; font-size:0.88rem; line-height:1.5;"><?php echo $ins['desc']; ?></td>
+                            <td style="padding:14px 18px; text-align:right; font-weight:700; color:#1e293b; font-size:0.92rem; white-space:nowrap; vertical-align:top;"><?php echo $ins['value']; ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section-divider" id="section-recommendations">
+                <span class="section-divider-label">🎯 Smart Business Recommendations</span>
+            </div>
+
+            <?php
+                    $recommendations = [];
+
+                    // Attendance / punctuality
+                    if ($overallLateRate > 20) {
+                        $recommendations[] = [
+                            'icon'  => '⏰',
+                            'color' => 'rose',
+                            'title' => 'Reduce Late Arrivals',
+                            'value' => $overallLateRate . '% late',
+                            'desc'  => 'Late rate is elevated this range. Consider reviewing shift start times or setting reminders for staff nearing clock-in.',
+                        ];
+                    } else {
+                        $recommendations[] = [
+                            'icon'  => '✅',
+                            'color' => 'teal',
+                            'title' => 'Attendance Is Healthy',
+                            'value' => $overallLateRate . '% late',
+                            'desc'  => 'Punctuality is in a good range. Keep the current schedule and monitor for any upward trend.',
+                        ];
+                    }
+
+                    // Today's sales vs. the range average
+                    if ($avgDailySales > 0) {
+                        $todayVsAvgPct = round((($todaySalesVal - $avgDailySales) / $avgDailySales) * 100, 1);
+                        if ($todayVsAvgPct <= -30) {
+                            $recommendations[] = [
+                                'icon'  => '📉',
+                                'color' => 'rose',
+                                'title' => "Today's Sales Are Trailing",
+                                'value' => $todayVsAvgPct . '%',
+                                'desc'  => 'Today is running well below your ' . $salesDays . '-day average of ₱' . number_format($avgDailySales, 2) . '. A same-day promo or social media push could help recover volume.',
+                            ];
+                        } elseif ($todayVsAvgPct >= 30) {
+                            $recommendations[] = [
+                                'icon'  => '📈',
+                                'color' => 'emerald',
+                                'title' => 'Strong Sales Day',
+                                'value' => '+' . $todayVsAvgPct . '%',
+                                'desc'  => 'Today is well above your average daily sales. Make sure ingredients for <strong>' . htmlspecialchars($topProduct) . '</strong> are stocked for tomorrow in case demand carries over.',
+                            ];
+                        } else {
+                            $recommendations[] = [
+                                'icon'  => '📊',
+                                'color' => 'blue',
+                                'title' => 'Sales On Track',
+                                'value' => ($todayVsAvgPct >= 0 ? '+' : '') . $todayVsAvgPct . '%',
+                                'desc'  => "Today's sales are close to your normal daily average — no action needed right now.",
+                            ];
+                        }
+                    }
+
+                    // Best-seller stock reminder
+                    if ($topProduct !== 'N/A') {
+                        $recommendations[] = [
+                            'icon'  => '📦',
+                            'color' => 'amber',
+                            'title' => "Protect Your Best-Seller's Stock",
+                            'value' => number_format($topProductQty) . ' units',
+                            'desc'  => '<strong>' . htmlspecialchars($topProduct) . '</strong> is your top mover this range. Prioritize restocking its ingredients first to avoid running out during peak hours.',
+                        ];
+                    }
+
+                    // Discount usage
+                    if ($discountCountInRange > 0) {
+                        $recommendations[] = [
+                            'icon'  => '🏷️',
+                            'color' => 'blue',
+                            'title' => 'Senior/PWD Discount Usage',
+                            'value' => number_format($discountCountInRange) . ' orders',
+                            'desc'  => '₱' . number_format($totalDiscountsInRange, 2) . ' was given back to customers via the Senior/PWD discount this range. Make sure ID verification stays consistent across cashiers and locations.',
+                        ];
+                    }
+
+                    // Peak day staffing
+                    if ($peakSalesDate !== 'N/A') {
+                        $recommendations[] = [
+                            'icon'  => '🗓️',
+                            'color' => 'emerald',
+                            'title' => 'Plan Staffing Around Peak Days',
+                            'value' => '₱' . number_format($peakSales, 2),
+                            'desc'  => '<strong>' . htmlspecialchars($peakSalesDate) . '</strong> was your highest-revenue day this range. Consider scheduling extra staff on similar days (e.g. weekends or paydays) going forward.',
+                        ];
+                    }
+
+                    if (empty($recommendations)) {
+                        $recommendations[] = [
+                            'icon'  => '💡',
+                            'color' => 'blue',
+                            'title' => 'Not Enough Data Yet',
+                            'value' => '—',
+                            'desc'  => 'Keep recording sales and attendance — recommendations will appear here once there\'s enough activity in the selected range.',
+                        ];
+                    }
+                ?>
+
+            <div style="background:#fff; border-radius:10px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f8fafc;">
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0; width:36px;">#</th>
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Recommendation</th>
+                            <th style="text-align:left; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Details</th>
+                            <th style="text-align:right; padding:12px 18px; font-size:0.8rem; color:#64748b; font-weight:700; border-bottom:1px solid #e2e8f0;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recommendations as $i => $rec): ?>
+                        <tr style="<?php echo $i < count($recommendations) - 1 ? 'border-bottom:1px solid #f1f5f9;' : ''; ?>">
+                            <td style="padding:14px 18px; color:#94a3b8; font-size:0.85rem; vertical-align:top;"><?php echo $i + 1; ?></td>
+                            <td style="padding:14px 18px; vertical-align:top; white-space:nowrap;">
+                                <span style="margin-right:6px;"><?php echo $rec['icon']; ?></span>
+                                <strong style="color:#1e293b; font-size:0.92rem;"><?php echo $rec['title']; ?></strong>
+                            </td>
+                            <td style="padding:14px 18px; color:#475569; font-size:0.88rem; line-height:1.5;"><?php echo $rec['desc']; ?></td>
+                            <td style="padding:14px 18px; text-align:right; font-weight:700; color:#1e293b; font-size:0.92rem; white-space:nowrap; vertical-align:top;"><?php echo $rec['value']; ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
 
             <div class="dash-footer">
@@ -573,7 +687,7 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
     }
 
     // track scroll
-    const sections = ['section-stats','section-attendance','section-sales','section-products','section-insights'];
+    const sections = ['section-stats','section-attendance','section-sales','section-products','section-insights','section-recommendations'];
     window.addEventListener('scroll', () => {
         let current = sections[0];
         sections.forEach(id => {
@@ -681,50 +795,6 @@ $productQuantitiesJson = json_encode(array_column($productQuantityData, 'total_q
         chart.options.scales.y.stacked = stacked;
         chart.update();
     }
-
-    //mini sparkline
-    function buildSparkline(id, data, color) {
-        new Chart(document.getElementById(id), {
-            type: 'line',
-            data: {
-                labels: data.map((_, i) => i),
-                datasets: [{ data, borderColor: color, backgroundColor: color + '33', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, datalabels: { display: false } },
-                scales: { x: { display: false }, y: { display: false } },
-                animation: { duration: 1000 }
-            },
-            plugins: [ChartDataLabels]
-        });
-    }
-    buildSparkline('sparkAtt',   totalAttendance, '#0ea5e9');
-    buildSparkline('sparkSales', salesAmounts,    '#10b981');
-
-    // circular percentage
-    function buildDonut(id, pct, color, trackColor) {
-        new Chart(document.getElementById(id), {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [pct, 100 - pct],
-                    backgroundColor: [color, trackColor || '#e0f2fe'],
-                    borderWidth: 0,
-                    hoverOffset: 0
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, cutout: '78%',
-                plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } },
-                animation: { animateRotate: true, duration: 1200 }
-            },
-            plugins: [ChartDataLabels]
-        });
-    }
-    buildDonut('donutLate',   <?php echo $lateRate; ?>,   '#f43f5e', '#fee2e2');
-    buildDonut('donutOnTime', <?php echo $onTimeRate; ?>, '#0ea5e9', '#e0f2fe');
-
 
     //total Attendance
     buildChart('totalAttendanceChart', {

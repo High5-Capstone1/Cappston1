@@ -159,6 +159,10 @@ if (!isset($_COOKIE['admin_jwt'])) {
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
+        <?php
+$storeQuery  = "SELECT store_id, store_name, location FROM store ORDER BY location";
+$storeResult = $conn->query($storeQuery);
+?>
         <div class="page-container">
             <div class="box">
                 <div class="logo">
@@ -179,7 +183,18 @@ if (!isset($_COOKIE['admin_jwt'])) {
                         <p id="passwordError" style="color:red; display:none; margin-top:4px;"></p>
                     </div>
 
-                    <input type="number" name="store_id" placeholder="Store ID" required>
+                    <select name="store_id" required>
+                    <option value="" disabled selected>Select Store Location</option>
+                    <?php
+                    if ($storeResult && $storeResult->num_rows > 0) {
+                    while ($store = $storeResult->fetch_assoc()) {
+                    echo "<option value='{$store['store_id']}'>"
+               . htmlspecialchars($store['location'])
+               . "</option>";
+        }
+    }
+    ?>
+</select>
                     <button type="submit">Create Account</button>
                 </form>
             </div>
@@ -191,6 +206,7 @@ if (!isset($_COOKIE['admin_jwt'])) {
                            FROM users u
                            LEFT JOIN store s ON u.store_id = s.store_id
                            WHERE role != 'admin'
+                            AND u.deleted_at IS NULL
                            ORDER BY role";
                 $result = $conn->query($sql);
 

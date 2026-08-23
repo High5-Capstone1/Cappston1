@@ -13,11 +13,16 @@ $cashier_name = $_SESSION['username'] ?? 'Cashier';
 $user_id      = $_SESSION['user_id'] ?? 0;
 $today        = date('Y-m-d');
 
-// Today's sales stats
+// today's sales stats
+
 $sales_stmt = $conn->prepare("
-    SELECT COUNT(*) as total_transactions, COALESCE(SUM(subtotal), 0) as total_sales
-    FROM sales
-    WHERE store_id = ? AND DATE(sale_date) = ? AND is_deleted = 0
+    SELECT COUNT(*) as total_transactions, COALESCE(SUM(total_amount), 0) as total_sales
+    FROM (
+        SELECT DISTINCT o.order_id, o.total_amount
+        FROM orders o
+        JOIN sales s ON s.order_id = o.order_id
+        WHERE s.store_id = ? AND DATE(o.order_date) = ? AND s.is_deleted = 0
+    ) t
 ");
 $sales_stmt->bind_param("is", $store_id, $today);
 $sales_stmt->execute();
@@ -25,19 +30,21 @@ $sales_data         = $sales_stmt->get_result()->fetch_assoc();
 $total_transactions = $sales_data['total_transactions'] ?? 0;
 $total_sales        = $sales_data['total_sales'] ?? 0;
 
-// Recent sales
+
 $recent_stmt = $conn->prepare("
-    SELECT s.sale_id, s.subtotal, s.sale_date, s.sale_time
-    FROM sales s
-    WHERE s.store_id = ? AND s.is_deleted = 0
-    ORDER BY s.sale_date DESC, s.sale_time DESC
+    SELECT o.order_id, o.total_amount, o.order_date, o.order_time
+    FROM orders o
+    JOIN sales s ON s.order_id = o.order_id
+    WHERE s.store_id = ? AND o.cashier_id = ? AND s.is_deleted = 0
+    GROUP BY o.order_id
+    ORDER BY o.order_date DESC, o.order_time DESC
     LIMIT 5
 ");
-$recent_stmt->bind_param("i", $store_id);
+$recent_stmt->bind_param("ii", $store_id, $user_id);
 $recent_stmt->execute();
 $recent_sales = $recent_stmt->get_result();
 
-// Low stock count
+// low stock count
 $low_stmt = $conn->prepare("
     SELECT COUNT(*) as cnt FROM inventory
     WHERE store_id = ? AND quantity <= low_stock_level
@@ -46,7 +53,7 @@ $low_stmt->bind_param("i", $store_id);
 $low_stmt->execute();
 $low_stock_count = $low_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
 
-// Attendance
+// attendance
 $att_stmt = $conn->prepare("
     SELECT time_in, time_out FROM attendance
     WHERE user_id = ? AND DATE(time_in) = ?
@@ -58,7 +65,7 @@ $att_row     = $att_stmt->get_result()->fetch_assoc();
 $clocked_in  = !empty($att_row['time_in']);
 $clocked_out = !empty($att_row['time_out']);
 
-// Total inventory items
+// total inventory items
 $inv_total_stmt = $conn->prepare("
     SELECT COUNT(*) as cnt FROM items WHERE status = 'active'
 ");
@@ -137,7 +144,7 @@ $total_items = $inv_total_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
             </div>
         </div>
 
-        <!-- Stats Cards -->
+        
         <div class="stats-grid">
 
             <div class="stat-card">
@@ -240,14 +247,7 @@ $total_items = $inv_total_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
                         </div>
                         <i class="fas fa-chevron-right qa-arrow"></i>
                     </a>
-                    <a href="stockCheck.php" class="qa-row">
-                        <div class="qa-icon si-teal"><i class="fas fa-clipboard-check"></i></div>
-                        <div class="qa-text">
-                            <strong>Stock Check</strong>
-                            <span>Verify inventory levels</span>
-                        </div>
-                        <i class="fas fa-chevron-right qa-arrow"></i>
-                    </a>
+                    
                 </div>
             </div>
 
@@ -260,16 +260,16 @@ $total_items = $inv_total_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
                 </div>
                 <?php if ($recent_sales && $recent_sales->num_rows > 0): ?>
                 <div class="recent-list">
-                    <?php while ($sale = $recent_sales->fetch_assoc()): ?>
-                    <div class="recent-row">
-                        <div class="recent-icon"><i class="fas fa-receipt"></i></div>
-                        <div class="recent-info">
-                            <strong>Sale #<?= $sale['sale_id'] ?></strong>
-                            <span><?= date('h:i A', strtotime($sale['sale_time'])) ?> &mdash; <?= date('M d', strtotime($sale['sale_date'])) ?></span>
-                        </div>
-                        <span class="recent-amount">₱<?= number_format($sale['subtotal'], 2) ?></span>
-                    </div>
-                    <?php endwhile; ?>
+                    <?php while ($order = $recent_sales->fetch_assoc()): ?>
+<div class="recent-row">
+    <div class="recent-icon"><i class="fas fa-receipt"></i></div>
+    <div class="recent-info">
+        <strong>Order #<?= $order['order_id'] ?></strong>
+        <span><?= date('h:i A', strtotime($order['order_time'])) ?> &mdash; <?= date('M d', strtotime($order['order_date'])) ?></span>
+    </div>
+    <span class="recent-amount">₱<?= number_format($order['total_amount'], 2) ?></span>
+</div>
+<?php endwhile; ?>
                 </div>
                 <?php else: ?>
                 <div class="empty-state">
@@ -279,48 +279,6 @@ $total_items = $inv_total_stmt->get_result()->fetch_assoc()['cnt'] ?? 0;
                 <?php endif; ?>
             </div>
 
-        </div>
-
-
-        <div class="panel">
-            <div class="panel-header">
-                <div class="ph-icon si-purple"><i class="fas fa-list-check"></i></div>
-                <h3>Today's Tasks</h3>
-            </div>
-            <div class="tasks-grid">
-                <div class="task-row task-done">
-                    <div class="task-check checked"><i class="fas fa-check"></i></div>
-                    <div class="task-text">
-                        <strong>☀️ Morning Stock Check</strong>
-                        <span>Verify ice cream and toppings inventory</span>
-                    </div>
-                    <span class="task-status done">Done</span>
-                </div>
-                <div class="task-row">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-text">
-                        <strong>🧾 Process Sales</strong>
-                        <span>Handle customer transactions accurately</span>
-                    </div>
-                    <span class="task-status pending">Pending</span>
-                </div>
-                <div class="task-row">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-text">
-                        <strong>📋 End-of-Day Report</strong>
-                        <span>Submit daily sales summary before closing</span>
-                    </div>
-                    <span class="task-status pending">Pending</span>
-                </div>
-                <div class="task-row">
-                    <div class="task-check"><i class="fas fa-check"></i></div>
-                    <div class="task-text">
-                        <strong>🌡️ Freezer Temperature Check</strong>
-                        <span>Ensure all storage units are at correct temperature</span>
-                    </div>
-                    <span class="task-status pending">Pending</span>
-                </div>
-            </div>
         </div>
 
     </main>

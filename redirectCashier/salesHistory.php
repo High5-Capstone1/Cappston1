@@ -17,6 +17,9 @@ $stmt = $conn->prepare("
         o.order_date,
         o.order_time,
         o.total_amount,
+        o.discount_type,
+        o.discount_amount,
+        o.discount_id_number,
         s.sale_id,
         p.product_name,
         p.size,
@@ -47,11 +50,14 @@ while ($row = $result->fetch_assoc()) {
     $oid = $row['order_id'];
     if (!isset($orders[$oid])) {
         $orders[$oid] = [
-            'order_id'    => $oid,
-            'order_date'  => $row['order_date'],
-            'order_time'  => $row['order_time'],
-            'total_amount'=> $row['total_amount'],
-            'items'       => []
+            'order_id'           => $oid,
+            'order_date'         => $row['order_date'],
+            'order_time'         => $row['order_time'],
+            'total_amount'       => $row['total_amount'],
+            'discount_type'      => $row['discount_type'],
+            'discount_amount'    => $row['discount_amount'],
+            'discount_id_number' => $row['discount_id_number'],
+            'items'              => []
         ];
         $grand_total += $row['total_amount'];
     }
@@ -72,9 +78,11 @@ while ($row = $result->fetch_assoc()) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .order-group { margin-bottom: 18px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-        .order-group-header { background: #0ea5e9; color: #fff; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.95rem; }
-        .order-group-header .order-meta { display: flex; gap: 18px; align-items: center; }
+        .order-group-header { background: #0ea5e9; color: #fff; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.95rem; flex-wrap: wrap; gap: 8px; }
+        .order-group-header .order-meta { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+        .order-group-header .order-total-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
         .order-group-header .order-total { font-size: 1.05rem; }
+        .order-group-header .order-subtotal-strike { font-size: 0.78rem; font-weight: 500; opacity: 0.85; text-decoration: line-through; }
         .order-group table { width: 100%; border-collapse: collapse; background: #fff; }
         .order-group table th { background: #f0f9ff; color: #0369a1; font-size: 0.82rem; padding: 8px 14px; text-align: left; }
         .order-group table td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
@@ -82,6 +90,9 @@ while ($row = $result->fetch_assoc()) {
         .topping-text { color: #e91e8c; font-style: italic; font-size: 0.82rem; }
         .no-orders { text-align: center; padding: 40px; color: #94a3b8; }
         .order-num { background: rgba(255,255,255,0.25); border-radius: 20px; padding: 2px 10px; font-size: 0.82rem; }
+        .discount-badge { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+        .discount-row { background: #fef2f2; padding: 8px 18px; font-size: 0.82rem; color: #b91c1c; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; border-top: 1px solid #fee2e2; }
+        .discount-row .discount-id { font-weight: 600; }
     </style>
 </head>
 <body>
@@ -134,17 +145,42 @@ while ($row = $result->fetch_assoc()) {
             No orders found for this date range.
         </div>
     <?php else: ?>
-        <?php $order_num = count($orders); ?>
         <?php foreach ($orders as $order): ?>
+            <?php
+                $has_discount = !empty($order['discount_type']) && $order['discount_amount'] > 0;
+                $items_subtotal = array_sum(array_column($order['items'], 'subtotal'));
+            ?>
             <div class="order-group">
                 <div class="order-group-header">
                     <div class="order-meta">
                         <span><i class="fas fa-receipt" style="margin-right:6px;"></i>Order #<?= $order['order_id'] ?></span>
                         <span><i class="fas fa-calendar" style="margin-right:4px;"></i><?= date('M d, Y', strtotime($order['order_date'])) ?></span>
                         <span><i class="fas fa-clock" style="margin-right:4px;"></i><?= date('h:i A', strtotime($order['order_time'])) ?></span>
+                        <?php if ($has_discount): ?>
+                            <span class="discount-badge">
+                                <i class="fas fa-tag"></i> <?= htmlspecialchars($order['discount_type']) ?> -12%
+                            </span>
+                        <?php endif; ?>
                     </div>
-                    <span class="order-total">₱<?= number_format($order['total_amount'], 2) ?></span>
+                    <div class="order-total-block">
+                        <?php if ($has_discount): ?>
+                            <span class="order-subtotal-strike">₱<?= number_format($items_subtotal, 2) ?></span>
+                        <?php endif; ?>
+                        <span class="order-total">₱<?= number_format($order['total_amount'], 2) ?></span>
+                    </div>
                 </div>
+
+                <?php if ($has_discount): ?>
+                    <div class="discount-row">
+                        <span>
+                            <i class="fas fa-id-card" style="margin-right:5px;"></i>
+                            <?= htmlspecialchars($order['discount_type']) ?> ID:
+                            <span class="discount-id"><?= htmlspecialchars($order['discount_id_number'] ?? 'N/A') ?></span>
+                        </span>
+                        <span>Discount Applied: -₱<?= number_format($order['discount_amount'], 2) ?></span>
+                    </div>
+                <?php endif; ?>
+
                 <table>
                     <thead>
                         <tr>

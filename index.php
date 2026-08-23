@@ -21,7 +21,6 @@
 
     <div class="welcome-section">
         <h2>Sales Management System</h2>
-        <p>Select your role to continue</p>
     </div>
 
 

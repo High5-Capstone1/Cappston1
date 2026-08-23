@@ -13,9 +13,13 @@ unset($_SESSION['success_message']);
 $cashier_id = $_SESSION['user_id'];
 $store_id   = $_SESSION['store_id'];
 
-// Get only the sale IDs from this specific transaction
+
 $last_sale_ids = $_SESSION['last_sale_ids'] ?? [];
-unset($_SESSION['last_sale_ids']); //clear after reading so next order starts fresh
+unset($_SESSION['last_sale_ids']); 
+
+
+$last_order_id = $_SESSION['last_order_id'] ?? null;
+unset($_SESSION['last_order_id']); 
 
 $sales = [];
 if (!empty($last_sale_ids)) {
@@ -37,7 +41,6 @@ if (!empty($last_sale_ids)) {
     }
 }
 
-//get toppings for each sale
 $sale_toppings = [];
 foreach ($sales as $sale) {
     $t_stmt = $conn->prepare("
@@ -53,9 +56,32 @@ foreach ($sales as $sale) {
         $sale_toppings[$sale['sale_id']][] = $t_row;
     }
 }
- 
-$grand_total = array_sum(array_column($sales, 'subtotal'));
-$receipt_no  = strtoupper(substr(md5(uniqid()), 0, 8));
+
+$subtotal = array_sum(array_column($sales, 'subtotal'));
+
+
+$discount_type   = null;
+$discount_amount = 0.00;
+$grand_total     = $subtotal;
+
+if ($last_order_id) {
+    $o_stmt = $conn->prepare("
+        SELECT total_amount, discount_type, discount_amount
+        FROM orders
+        WHERE order_id = ?
+    ");
+    $o_stmt->bind_param("i", $last_order_id);
+    $o_stmt->execute();
+    $o_result = $o_stmt->get_result();
+    if ($order_row = $o_result->fetch_assoc()) {
+        $grand_total     = $order_row['total_amount'];
+        $discount_type   = $order_row['discount_type'];
+        $discount_amount = $order_row['discount_amount'];
+    }
+}
+
+$has_discount = $discount_type && $discount_amount > 0;
+$receipt_no   = strtoupper(substr(md5(uniqid()), 0, 8));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -150,6 +176,21 @@ $receipt_no  = strtoupper(substr(md5(uniqid()), 0, 8));
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
+
+                <?php if ($has_discount): ?>
+                <div class="total-row">
+                    <span class="total-label">Subtotal</span>
+                    <span class="total-value">₱<?= number_format($subtotal, 2) ?></span>
+                </div>
+                <div class="total-row">
+                    <span class="total-label" style="color:#e74c3c;">
+                        <?= htmlspecialchars($discount_type) ?> Discount (12%)
+                    </span>
+                    <span class="total-value" style="color:#e74c3c;">
+                        -₱<?= number_format($discount_amount, 2) ?>
+                    </span>
+                </div>
+                <?php endif; ?>
 
                 <div class="total-row main">
                     <span class="total-label grand">Total Amount</span>

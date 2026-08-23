@@ -23,7 +23,7 @@
     $source        = $_POST['login_source'] ?? 'staff';
 
 
-    $sql    = "SELECT * FROM users";
+    $sql    = "SELECT * FROM users WHERE deleted_at IS NULL";
     $result = $conn->query($sql);
 
     $user = null;
@@ -36,10 +36,11 @@
             break;
         }
     }
+
+    
     if ($user && password_verify($password, $user['password'])) {
 
         $role = decryptData($user['role']);
-
         if ($role === 'admin' && $source !== 'admin') {
             $_SESSION['error'] = "Access denied. Please use the Admin login page.";
             header("Location: roleLogin/login.php");
@@ -54,14 +55,16 @@
 
         session_regenerate_id(true);
 
-        if ($role === 'admin') {
-            header("Location: redirectAdmin/adminDashboard.php");
-        } elseif ($role === 'cashier') {
-            header("Location: redirectCashier/cashierDashboard.php");
-        } else {
-            header("Location: redirectStaff/staffDashboard.php");
-        }
-        exit();
+      if ($role === 'admin') {
+    header("Location: redirectAdmin/adminDashboard.php");
+} elseif ($role === 'cashier') {
+    header("Location: redirectCashier/cashierDashboard.php");
+} else {
+
+    $_SESSION['error'] = "Account has an invalid role. Please contact admin.";
+    header("Location: roleLogin/login.php");
+}
+exit();
 
     } else {
         $_SESSION['error'] = "Invalid username or password.";

@@ -15,7 +15,7 @@ $date_to   = $_GET['date_to']   ?? date('Y-m-d');
 $stores = $conn->query("SELECT store_id, store_name, location FROM store ORDER BY store_id")
                ->fetch_all(MYSQLI_ASSOC);
 
-//build variance data for every store
+
 $all_store_data    = [];
 $grand_consumed    = 0;
 $grand_sales       = 0;
@@ -24,13 +24,13 @@ $grand_unaccounted = 0;
 foreach ($stores as $store) {
     $sid = $store['store_id'];
 
-    //Actual qty per item for this store
+
     $stmt = $conn->prepare("SELECT item_id, quantity FROM inventory WHERE store_id = ?");
     $stmt->bind_param("i", $sid);
     $stmt->execute();
     $inv_map = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'quantity', 'item_id');
 
-    //Approved stock sent to this store in date range
+
    $stmt = $conn->prepare("
     SELECT item_id, SUM(requested_qty) AS total_approved
     FROM stock_requests
@@ -41,7 +41,6 @@ $stmt->bind_param("i", $sid);
     $stmt->execute();
     $approved_map = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total_approved', 'item_id');
 
-    //Sales consumed per item for this store in date range
     $stmt = $conn->prepare("
         SELECT pi.item_id, SUM(pi.quantity_needed * s.quantity) AS sales_consumed
         FROM sales s
@@ -54,7 +53,7 @@ $stmt->bind_param("i", $sid);
     $stmt->execute();
     $sales_map = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'sales_consumed', 'item_id');
 
-    //Items that have inventory rows for this store
+
     $stmt = $conn->prepare("
         SELECT item_id, item_name, category
         FROM items
@@ -64,7 +63,7 @@ $stmt->bind_param("i", $sid);
     $stmt->execute();
     $items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    // Build rows
+
     $rows              = [];
     $store_consumed    = 0;
     $store_sales       = 0;

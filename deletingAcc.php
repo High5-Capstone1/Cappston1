@@ -16,31 +16,16 @@ if ($user_id == $_SESSION['user_id']) {
     die("You cannot delete your own account");
 }
 
+try {
+    $stmt = $conn->prepare("UPDATE users SET deleted_at = NOW() WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
 
-$stmt = $conn->prepare("DELETE FROM notifications WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
+    header("Location: redirectAdmin/users.php");
+    exit();
 
-
-$stmt = $conn->prepare("DELETE FROM stock_requests WHERE requested_by = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-
-
-$stmt = $conn->prepare("DELETE FROM attendance WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-
-
-$stmt = $conn->prepare("DELETE FROM sales WHERE cashier_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-
-
-$stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-
-header("Location: redirectAdmin/users.php");
-exit();
+} catch (mysqli_sql_exception $e) {
+    error_log($e->getMessage());
+    die("Failed to remove account. Check error logs for details.");
+}
 ?>

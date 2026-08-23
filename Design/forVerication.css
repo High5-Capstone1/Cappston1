@@ -385,8 +385,26 @@
             cursor: not-allowed;
             transform: none;
         }
-
-        /* Stagger animation */
+  .discount-float-panel {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: max-height 0.3s ease, opacity 0.25s ease, transform 0.25s ease, margin-top 0.3s ease;
+            background: #f7fbff;
+            border: 1px solid #d9edff;
+            border-radius: 12px;
+            padding: 0 16px;
+            margin-top: 0;
+        }
+        .discount-float-panel.open {
+            max-height: 400px;
+            opacity: 1;
+            transform: translateY(0);
+            padding: 16px;
+            margin-top: 12px;
+        }
+        
         .card, .summary-card, .actions {
             animation: fadeUp 0.4s ease both;
         }

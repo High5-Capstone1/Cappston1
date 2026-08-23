@@ -21,7 +21,7 @@ $productQuery = $conn->query("SELECT DISTINCT product_name FROM products ORDER B
 $allProducts = [];
 $result = $conn->query("
     SELECT p.*,
-           COALESCE(MIN(inv.quantity), 0) AS stock,
+           MIN(COALESCE(inv.quantity, 0)) AS stock,
            (
                SELECT it2.item_name
                FROM product_items pi2

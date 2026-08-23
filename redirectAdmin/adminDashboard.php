@@ -169,7 +169,7 @@ $greeting  = $hour < 12 ? 'Good Morning' : ($hour < 18 ? 'Good Afternoon' : 'Goo
     <div class="card-active-bar"></div>
 </a>
 
-        <a href="reports.php" class="dashboard-card" data-color="purple">
+        <a href="salesDashboard.php" class="dashboard-card" data-color="purple">
             <div class="card-bg-icon">📊</div>
             <div class="card-inner">
                 <div class="card-emoji">📊</div>
