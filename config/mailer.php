@@ -10,7 +10,7 @@ function sendResetEmail(string $toEmail, string $toName, string $resetLink): boo
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'gemnuell@gmail.com';  
+   
         $mail->Password   = 'dsyoehugzphvshtc';       
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
